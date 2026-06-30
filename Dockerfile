@@ -73,12 +73,13 @@ ENV DATABASE_URL=file:/data/db/vault.db
 # Initialize the SQLite database
 RUN cd /app && npx prisma db push --skip-generate || true
 
-# Expose port (Render sets $PORT)
+# Expose port
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
 
 # Run from the standalone directory so all paths resolve correctly
 WORKDIR /app/.next/standalone
 
-# Start the Next.js standalone server
-CMD ["node", "server.js"]
+# Start the Next.js standalone server (bind to 0.0.0.0 on Railway's PORT)
+CMD ["sh", "-c", "node server.js -H 0.0.0.0 -p ${PORT:-3000}"]
