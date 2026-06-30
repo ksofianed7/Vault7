@@ -44,8 +44,16 @@ RUN npm install --legacy-peer-deps
 # Copy source
 COPY . .
 
+# Generate Prisma client BEFORE building Next.js
+# (Next.js build imports @prisma/client, which must exist first)
+RUN npx prisma generate
+
 # Build the Next.js app (standalone output — copies static + public automatically)
 RUN npm run build
+
+# Copy the Prisma generated client into the standalone output
+RUN cp -r node_modules/.prisma .next/standalone/node_modules/.prisma 2>/dev/null || true
+RUN cp -r node_modules/@prisma/client .next/standalone/node_modules/@prisma/client 2>/dev/null || true
 
 # Copy the Python pipeline scripts into the standalone output
 # (Next.js standalone doesn't include non-public, non-imported files)
@@ -57,9 +65,13 @@ WORKDIR /app/.next/standalone/scripts/pot-provider
 RUN deno install --allow-scripts=npm:canvas --frozen || \
     echo "deno install failed — PO token script mode may not work, but HTTP mode will still function"
 
-# Create cache directory for media bundles
-RUN mkdir -p /data/media
+# Create cache directory for media bundles + database
+RUN mkdir -p /data/media /data/db
 ENV VAULT_CACHE_DIR=/data/media
+ENV DATABASE_URL=file:/data/db/vault.db
+
+# Initialize the SQLite database
+RUN cd /app && npx prisma db push --skip-generate || true
 
 # Expose port (Render sets $PORT)
 ENV PORT=3000
