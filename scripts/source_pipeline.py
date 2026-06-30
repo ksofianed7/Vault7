@@ -71,6 +71,20 @@ def parse_yt_error(raw: str) -> str:
     if "connection" in low and ("timed out" in low or "refused" in low):
         return "Couldn't connect to the source. Check your internet connection."
 
+    # Instagram-specific
+    if "instagram" in low and ("empty media response" in low or "login" in low or "cookies" in low):
+        return (
+            "Instagram requires login to download this post. This is an Instagram "
+            "platform restriction — even public posts require authentication in 2026."
+        )
+
+    # TikTok-specific
+    if "tiktok" in low and ("unexpected response" in low or "captcha" in low):
+        return (
+            "TikTok is blocking this request. Try again in a few minutes, or try "
+            "a different video."
+        )
+
     # Strip yt-dlp noise
     msg = raw.strip()
     msg = re.sub(r"^ERROR:\s*\[[^\]]+\]\s*[^\s:]+:\s*", "", msg)
@@ -257,6 +271,20 @@ def probe_meta(url: str) -> dict:
             "ext": "mp3",
             "bitrate": f"{abr}k",
             "size": fmt_size(a.get("filesize")),
+        })
+
+    # If no separate audio formats (e.g., TikTok only has combined video+audio),
+    # offer audio extraction from the best video format.
+    if not audio_qualities and video_qualities:
+        # Pick the best video format and use its format_id for audio extraction
+        best_video = video_by_height[max(video_by_height.keys())]
+        audio_qualities.append({
+            "id": best_video["format_id"],
+            "label": "Standard",
+            "type": "audio",
+            "ext": "mp3",
+            "bitrate": "128k",
+            "size": fmt_size(best_video.get("filesize")),
         })
 
     return {

@@ -137,10 +137,18 @@ export function TrimTool({
   const tickInterval = duration > 120 ? 30 : duration > 30 ? 10 : 5;
   const ticks = Array.from({ length: Math.floor(duration / tickInterval) + 1 }, (_, i) => i * tickInterval);
 
-  // Storyboard thumbnails (one per second). If bundle has fewer thumbs than
-  // the duration, we tile them; if more, we slice.
-  const storyboard = bundle?.storyboard ?? [];
-  const thumbCount = Math.max(1, Math.min(storyboard.length, Math.ceil(duration)));
+  // ADAPTIVE storyboard: show at most ~20 thumbnails so each is wide enough to see.
+  // For long videos, we sample thumbnails evenly across the duration instead of
+  // showing one per second (which makes them invisible).
+  const allStoryboard = bundle?.storyboard ?? [];
+  const MAX_THUMBS = 20;
+  const thumbCount = Math.max(1, Math.min(MAX_THUMBS, allStoryboard.length, Math.ceil(duration)));
+  // Evenly sample thumbnails from the full set
+  const storyboard = thumbCount < allStoryboard.length
+    ? Array.from({ length: thumbCount }, (_, i) =>
+        allStoryboard[Math.floor((i / thumbCount) * allStoryboard.length)]
+      )
+    : allStoryboard.slice(0, thumbCount);
 
   // Real waveform peaks (from ffmpeg, not synthetic)
   const waveform = bundle?.waveform ?? [];
@@ -252,69 +260,28 @@ export function TrimTool({
             })}
           </div>
         ) : showWaveform ? (
-          // AUDIO MODE — pro mirrored waveform: real ffmpeg data, centered axis,
-          // gradient fill, peak indicators. No more flat bars.
-          <div className="absolute inset-0 px-1 flex flex-col">
-            {/* Center axis line */}
-            <div className="absolute left-0 right-0 top-1/2 h-px bg-[rgba(245,239,224,0.06)]" />
-
-            {/* Mirrored bars — top half + bottom half */}
-            <div className="absolute inset-0 flex items-center gap-px px-1">
-              {waveform.map((h, i) => {
-                const t = (i / waveform.length) * duration;
-                const inRange = t >= trimStart && t <= trimEnd;
-                // Boost small values so the waveform is always visible
-                const boosted = Math.max(0.04, Math.pow(h, 0.7));
-                return (
-                  <div
-                    key={i}
-                    className="flex-1 relative flex items-center justify-center"
-                    style={{ height: "100%" }}
-                  >
-                    {/* Top half (going up from center) */}
-                    <div
-                      className="absolute bottom-1/2 w-full rounded-t-[1px]"
-                      style={{
-                        height: `${boosted * 50}%`,
-                        background: inRange
-                          ? "linear-gradient(180deg, #ff6b4a 0%, rgba(255, 107, 74, 0.5) 100%)"
-                          : "rgba(245, 239, 224, 0.1)",
-                      }}
-                    />
-                    {/* Bottom half (mirrored, going down from center) */}
-                    <div
-                      className="absolute top-1/2 w-full rounded-b-[1px]"
-                      style={{
-                        height: `${boosted * 50}%`,
-                        background: inRange
-                          ? "linear-gradient(0deg, #e8c547 0%, rgba(232, 197, 71, 0.4) 100%)"
-                          : "rgba(245, 239, 224, 0.06)",
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* RMS / peak indicator dots at very loud moments (top 10%) */}
-            <div className="absolute inset-0 pointer-events-none">
-              {waveform.map((h, i) => {
-                if (h < 0.6) return null;
-                const t = (i / waveform.length) * duration;
-                const inRange = t >= trimStart && t <= trimEnd;
-                return (
-                  <div
-                    key={`peak-${i}`}
-                    className="absolute top-1 w-1 h-1 rounded-full"
-                    style={{
-                      left: `${(i / waveform.length) * 100}%`,
-                      background: inRange ? "#e8c547" : "rgba(232, 197, 71, 0.3)",
-                      boxShadow: inRange ? "0 0 4px rgba(232, 197, 71, 0.8)" : "none",
-                    }}
-                  />
-                );
-              })}
-            </div>
+          // AUDIO MODE — clean, simple waveform: single-direction bars from
+          // the bottom, coral for in-range, dim for out-of-range. Minimal
+          // but elegant.
+          <div className="absolute inset-0 flex items-end gap-px px-1.5 pb-1">
+            {waveform.map((h, i) => {
+              const t = (i / waveform.length) * duration;
+              const inRange = t >= trimStart && t <= trimEnd;
+              // Boost small values so the waveform is always visible
+              const boosted = Math.max(0.06, Math.pow(h, 0.6));
+              return (
+                <div
+                  key={i}
+                  className="flex-1 rounded-t-sm transition-colors"
+                  style={{
+                    height: `${boosted * 100}%`,
+                    background: inRange
+                      ? "#ff6b4a"
+                      : "rgba(245, 239, 224, 0.12)",
+                  }}
+                />
+              );
+            })}
           </div>
         ) : (
           // Fallback — no bundle yet, show empty state
