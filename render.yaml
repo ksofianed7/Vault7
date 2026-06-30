@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: vault
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: VAULT_CACHE_DIR
+        value: /data/media
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: vault-cache
+      mountPath: /data
+      sizeGB: 1

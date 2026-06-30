@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model DownloadRecord {
+  id         String   @id @default(cuid())
+  url        String
+  platform   String
+  title      String
+  author     String?
+  thumbnail  String?
+  duration   Int?
+  format     String
+  quality    String
+  trimStart  Float?
+  trimEnd    Float?
+  status     String   @default("completed")
+  fileSize   Int?
+  createdAt  DateTime @default(now())
+}
