@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { UrlInput } from "./url-input";
 import { MediaPreview } from "./media-preview";
@@ -11,6 +11,7 @@ import { TrimTool } from "./trim-tool";
 import { DownloadButton } from "./download-button";
 import { DownloadsTray } from "./downloads-tray";
 import { useSnapVault, type DownloadFormat } from "@/lib/store";
+import { applyFilenameTemplate } from "@/lib/filename";
 import type { VideoMeta, MediaBundle } from "@/lib/platform";
 
 export function DownloadScreen() {
@@ -20,6 +21,7 @@ export function DownloadScreen() {
   const [qualityId, setQualityId] = useState("");
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
+  const [customFilename, setCustomFilename] = useState("");
 
   // Date label rendered only on the client to avoid SSR/CSR hydration mismatch
   // (server uses UTC, client uses user's timezone → different day strings)
@@ -35,6 +37,29 @@ export function DownloadScreen() {
   const bundle = useSnapVault((s) => s.mediaBundle);
   const setBundle = useSnapVault((s) => s.setMediaBundle);
   const [preparingBundle, setPreparingBundle] = useState(false);
+
+  // Detect shared URL from Android share intent (?url=...) or focus shortcut
+  const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get("url");
+    const focus = params.get("focus");
+    if (url) {
+      setSharedUrl(url);
+      // Auto-fetch the shared URL
+      handleFetch(url);
+      // Clean the URL (remove ?url= so it doesn't re-trigger on refresh)
+      window.history.replaceState({}, "", "/");
+    }
+    if (focus === "input") {
+      // Focus the URL input after a tick
+      setTimeout(() => {
+        const input = document.querySelector('input[type="url"]') as HTMLInputElement;
+        input?.focus();
+      }, 100);
+    }
+  }, []);
 
   useEffect(() => {
     if (media) {
@@ -182,7 +207,7 @@ export function DownloadScreen() {
             source
           </span>
         </div>
-        <UrlInput onSubmit={handleFetch} loading={loading} />
+        <UrlInput onSubmit={handleFetch} loading={loading} initialValue={sharedUrl ?? undefined} />
       </div>
 
       {/* Loading state */}
@@ -212,9 +237,48 @@ export function DownloadScreen() {
             transition={{ duration: 0.4, ease: [0.2, 0.9, 0.3, 1] }}
             className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0"
           >
-            {/* Left column: preview + download */}
+            {/* Left column: preview + filename + download */}
             <div className="space-y-6">
               <MediaPreview meta={media} />
+
+              {/* Custom filename input */}
+              <div>
+                <div className="mb-2 flex items-center justify-between px-1">
+                  <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-warm">
+                    <FileText className="h-3 w-3" />
+                    Filename
+                  </span>
+                  <button
+                    onClick={() => {
+                      // Apply the template from settings
+                      const tpl = settings.filenameTemplate || "{title}";
+                      const selectedQ = media.qualities.find((q) => q.id === qualityId);
+                      const name = applyFilenameTemplate(tpl, {
+                        title: media.title,
+                        author: media.author,
+                        platform: media.platform,
+                        quality: selectedQ?.label ?? "",
+                        format: format,
+                        ext: selectedQ?.ext ?? "mp4",
+                      }).replace(/\.[^.]+$/, ""); // remove ext (added on download)
+                      setCustomFilename(name);
+                    }}
+                    className="font-mono text-[9px] uppercase tracking-wider text-coral hover:text-cream"
+                  >
+                    Use template
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={customFilename}
+                  onChange={(e) => setCustomFilename(e.target.value)}
+                  placeholder={media.title}
+                  className="surface-inset w-full rounded-md px-4 py-3 font-mono text-[12px] text-cream placeholder:text-[#5a5448] outline-none focus:border-coral/40 transition"
+                />
+                <div className="mt-1.5 px-1 font-mono text-[9px] text-warm">
+                  .{selectedQuality?.ext ?? "mp4"} — leave empty to use video title
+                </div>
+              </div>
 
               {/* Download */}
               <DownloadButton
@@ -223,6 +287,7 @@ export function DownloadScreen() {
                 quality={selectedQuality}
                 trimStart={trimStart}
                 trimEnd={trimEnd}
+                customFilename={customFilename}
                 onDone={() => {}}
               />
             </div>

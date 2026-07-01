@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Film, Music, Instagram, Check, AlertCircle } from "lucide-react";
+import { Film, Music, Instagram, Check, AlertCircle, FileText } from "lucide-react";
 import { useSnapVault, type DownloadFormat } from "@/lib/store";
 import { toast } from "sonner";
 import { VaultLogo } from "./logo";
@@ -66,8 +66,46 @@ export function SettingsScreen() {
         />
       </Section>
 
+      {/* Section: Filename template */}
+      <Section number="03" title="Filename" hint="Template for saved files">
+        <div className="surface-inset rounded-md p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-3.5 w-3.5 text-coral" />
+            <span className="font-display text-[14px] font-medium text-cream">Template</span>
+          </div>
+          <input
+            type="text"
+            value={settings.filenameTemplate}
+            onChange={(e) => update({ filenameTemplate: e.target.value })}
+            placeholder="{title}"
+            className="surface-inset w-full rounded-md px-3 py-2.5 font-mono text-[12px] text-cream placeholder:text-[#5a5448] outline-none focus:border-coral/40 transition border border-[rgba(245,239,224,0.05)]"
+          />
+          <div className="mt-3 space-y-1.5">
+            <div className="font-mono text-[9px] uppercase tracking-wider text-warm">
+              Available variables:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {["{title}", "{author}", "{platform}", "{quality}", "{format}", "{date}"].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => update({ filenameTemplate: settings.filenameTemplate + " " + v })}
+                  className="font-mono text-[10px] px-2 py-0.5 rounded surface border border-[rgba(245,239,224,0.08)] text-warm hover:text-cream hover:border-coral/30"
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-[rgba(245,239,224,0.05)] font-mono text-[9px] leading-relaxed text-warm">
+            Example: <span className="text-cream/70">"{settings.filenameTemplate || "{title}"}"</span>
+            <br />
+            → "Sunset Drive - Aurora Studio (2026-07-01).mp4"
+          </div>
+        </div>
+      </Section>
+
       {/* Section: Storage */}
-      <Section number="03" title="Storage" hint="Manage what stays on this device">
+      <Section number="04" title="Storage" hint="Manage what stays on this device">
         <button
           onClick={() => {
             clearHistory();
@@ -80,7 +118,7 @@ export function SettingsScreen() {
       </Section>
 
       {/* About */}
-      <Section number="04" title="Colophon" hint="What this is and how it works">
+      <Section number="05" title="Colophon" hint="What this is and how it works">
         <div className="surface-inset rounded-md p-4">
           <div className="flex items-center gap-3">
             <VaultLogo size={28} />

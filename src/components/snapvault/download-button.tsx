@@ -15,6 +15,7 @@ interface DownloadButtonProps {
   quality: QualityOption | undefined;
   trimStart: number;
   trimEnd: number;
+  customFilename?: string;
   onDone: () => void;
 }
 
@@ -24,6 +25,7 @@ export function DownloadButton({
   quality,
   trimStart,
   trimEnd,
+  customFilename,
   onDone,
 }: DownloadButtonProps) {
   const [stage, setStage] = useState<"idle" | "fetching" | "processing" | "done" | "error">("idle");
@@ -90,6 +92,7 @@ export function DownloadButton({
           author: meta.author,
           thumbnail: meta.thumbnail,
           duration: meta.duration,
+          customFilename: customFilename || undefined,
         }),
       });
       if (!res.ok) {

@@ -49,6 +49,7 @@ interface Settings {
   autoTrim: boolean;
   saveHistory: boolean;
   hapticFeedback: boolean;
+  filenameTemplate: string; // e.g. "{title} - {author}"
 }
 
 interface SnapVaultState {
@@ -103,6 +104,7 @@ export const useSnapVault = create<SnapVaultState>()(
         autoTrim: false,
         saveHistory: true,
         hapticFeedback: true,
+        filenameTemplate: "{title}",
       },
 
       setCurrentMedia: (m) => set({ currentMedia: m, fetchError: null }),

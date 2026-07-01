@@ -27,5 +27,20 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "url": "url"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Paste a link",
+      "short_name": "Paste",
+      "description": "Open Vault with the URL input focused",
+      "url": "/?focus=input"
+    }
   ]
 }

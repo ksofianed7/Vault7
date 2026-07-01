@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       author?: string;
       thumbnail?: string;
       duration?: number;
+      customFilename?: string; // user-provided filename (no extension)
     };
 
     if (!body?.url || !body.qualityId) {
@@ -63,7 +64,12 @@ export async function POST(req: NextRequest) {
       .slice(0, 16);
     const outDir = path.join(CACHE_ROOT, "downloads", dlId);
     await mkdir(outDir, { recursive: true });
-    const fileName = `${slugify(body.title ?? "vault-download")}.${body.ext}`;
+
+    // Use custom filename if provided, otherwise slugify the title
+    const baseName = body.customFilename
+      ? slugify(body.customFilename)
+      : slugify(body.title ?? "vault-download");
+    const fileName = `${baseName}.${body.ext}`;
     const outPath = path.join(outDir, fileName);
 
     // Download + (optional) trim via the pipeline
@@ -112,8 +118,9 @@ export async function POST(req: NextRequest) {
 
 function slugify(s: string): string {
   return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "vault-download";
+    .trim()
+    .replace(/[<>:"/\\|?*]/g, "") // remove Windows illegal chars only
+    .replace(/\s+/g, " ")         // collapse multiple spaces
+    .trim()
+    .slice(0, 120) || "vault-download";
 }
