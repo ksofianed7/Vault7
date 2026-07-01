@@ -72,8 +72,8 @@ export function HistoryScreen() {
         />
       </div>
 
-      {/* List — single column on mobile, two columns on desktop */}
-      <div className="divide-y divide-[rgba(245,239,224,0.08)] lg:grid lg:grid-cols-2 lg:gap-x-8 lg:divide-y-0">
+      {/* List — single column on mobile, multiple columns on desktop */}
+      <div className="divide-y divide-[rgba(245,239,224,0.08)] lg:grid lg:grid-cols-2 lg:gap-x-10 lg:divide-y-0">
         <AnimatePresence initial={false}>
           {filtered.map((h, idx) => {
             const info = detectPlatform(h.url);

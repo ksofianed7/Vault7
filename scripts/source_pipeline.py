@@ -308,9 +308,15 @@ def probe_meta(url: str) -> dict:
     # Detect platform
     if "youtube" in url or "youtu.be" in url:
         platform = "youtube"
-        # Try each player client until one returns BOTH video and audio formats.
+        # Try each player client and KEEP the one with the most complete format list.
+        # The 'default' client (with PO token) usually returns the full DASH list
+        # (2160p down to 144p + all audio bitrates). Other clients (android, tv, ios)
+        # may return only HLS m3u8 formats (limited resolutions, no separate audio).
+        # We MUST prefer clients that return BOTH video AND audio with the highest
+        # max resolution — otherwise we end up with "360p only" + "Standard audio".
         last_err = None
-        d = None
+        best_d = None
+        best_score = 0
         for client in YT_CLIENTS:
             try:
                 args = yt_dlp_args(url)
@@ -322,20 +328,32 @@ def probe_meta(url: str) -> dict:
                 formats = candidate.get("formats", [])
                 has_video = any(f.get("height") and f.get("vcodec") != "none" for f in formats)
                 has_audio = any(f.get("abr") and f.get("vcodec") == "none" for f in formats)
-                if has_video and has_audio:
-                    d = candidate
-                    break
-                if d is None and (has_video or has_audio):
-                    d = candidate
-                last_err = f"{client} returned incomplete formats (video={has_video}, audio={has_audio})"
-                continue
+
+                # Only accept clients with BOTH video AND audio
+                if not (has_video and has_audio):
+                    last_err = f"{client} returned incomplete (video={has_video}, audio={has_audio})"
+                    continue
+
+                # Score: max video height + audio bitrate count (weighted heavily)
+                # A client with 2160p + 4 audio bitrates scores 2160 + 4000 = 6160
+                # A client with 360p + 0 audio scores 0 (rejected above)
+                max_h = max((f.get("height") or 0 for f in formats), default=0)
+                audio_n = sum(1 for f in formats if f.get("abr") and f.get("vcodec") == "none")
+                score = max_h + (audio_n * 1000)
+
+                if score > best_score:
+                    best_d = candidate
+                    best_score = score
+
             except subprocess.CalledProcessError as e:
                 last_err = (e.stderr or "")[:500]
                 if "Video unavailable" in (e.stderr or "") or "Private video" in (e.stderr or ""):
                     break
                 continue
-        if d is None:
+
+        if best_d is None:
             return {"error": parse_yt_error(last_err or "yt-dlp failed")}
+        d = best_d
     else:
         if "instagram" in url:
             platform = "instagram"

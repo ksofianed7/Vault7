@@ -187,14 +187,15 @@ export function DownloadScreen() {
         <div className="hairline mt-6" />
       </div>
 
-      {/* Desktop hero — smaller, inline */}
-      <div className="hidden lg:block">
-        <h1 className="font-display text-[36px] leading-[1] tracking-tight text-cream">
+      {/* Desktop hero — bigger, more presence */}
+      <div className="hidden lg:block lg:mb-2">
+        <h1 className="font-display text-[52px] leading-[0.95] tracking-tight text-cream">
           Keep the frame, <span className="italic font-light text-coral">drop the noise.</span>
         </h1>
-        <p className="mt-3 text-[13px] leading-relaxed text-cream/50 max-w-md">
+        <p className="mt-4 text-[15px] leading-relaxed text-cream/50 max-w-lg">
           A considered downloader for YouTube, Instagram, and TikTok. Pick the moment, choose the format, archive it.
         </p>
+        <div className="hairline mt-8" />
       </div>
 
       {/* URL input with figure caption */}
@@ -235,7 +236,7 @@ export function DownloadScreen() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.4, ease: [0.2, 0.9, 0.3, 1] }}
-            className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0"
+            className="space-y-6 lg:grid lg:grid-cols-[1.2fr_1fr] lg:gap-12 lg:space-y-0"
           >
             {/* Left column: preview + filename + download */}
             <div className="space-y-6">

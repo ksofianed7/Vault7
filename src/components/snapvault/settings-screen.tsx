@@ -23,7 +23,7 @@ export function SettingsScreen() {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 lg:grid lg:grid-cols-2 lg:gap-x-12 lg:gap-y-8">
       {/* Section: Default format */}
       <Section number="01" title="Default format" hint="What loads first when you paste a link">
         <div className="grid grid-cols-2 gap-2">
@@ -117,8 +117,8 @@ export function SettingsScreen() {
         </button>
       </Section>
 
-      {/* About */}
-      <Section number="05" title="Colophon" hint="What this is and how it works">
+      {/* About — full width on desktop */}
+      <Section number="05" title="Colophon" hint="What this is and how it works" className="lg:col-span-2">
         <div className="surface-inset rounded-md p-4">
           <div className="flex items-center gap-3">
             <VaultLogo size={28} />
@@ -183,14 +183,16 @@ function Section({
   title,
   hint,
   children,
+  className,
 }: {
   number?: string;
   title: string;
   hint?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div>
+    <div className={className}>
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-2.5 min-w-0">
           {number && (

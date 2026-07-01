@@ -42,8 +42,8 @@ export function VaultApp() {
           </div>
         </header>
 
-        {/* Screens — centered with max width, generous padding on desktop */}
-        <div className="mx-auto max-w-md px-5 pb-32 pt-8 lg:max-w-2xl lg:px-12 lg:pb-12 lg:pt-12">
+        {/* Screens — full width on desktop with generous padding, centered on mobile */}
+        <div className="mx-auto max-w-md px-5 pb-32 pt-8 lg:max-w-5xl lg:px-16 lg:pb-12 lg:pt-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={tab}
