@@ -71,11 +71,12 @@ def parse_yt_error(raw: str) -> str:
     if "connection" in low and ("timed out" in low or "refused" in low):
         return "Couldn't connect to the source. Check your internet connection."
 
-    # Instagram-specific
+    # Instagram-specific — be honest about the 2026 reality
     if "instagram" in low and ("empty media response" in low or "login" in low or "cookies" in low):
         return (
-            "Instagram requires login to download this post. This is an Instagram "
-            "platform restriction — even public posts require authentication in 2026."
+            "Instagram requires authentication in 2026 — even for public posts. "
+            "This is a platform restriction we can't bypass without operator-configured "
+            "server cookies. YouTube and TikTok work without login."
         )
 
     # TikTok-specific
@@ -107,6 +108,69 @@ def pot_server_home() -> str:
         if (c / "src" / "generate_once.ts").exists():
             return str(c)
     return ""
+
+
+def try_instagram_embed_fallback(url: str) -> dict | None:
+    """
+    Try Instagram's public embed endpoint — sometimes works for public posts
+    without authentication. Returns a yt-dlp-style dict or None.
+    """
+    import urllib.request
+    import re
+
+    # Extract shortcode from URL (supports /p/ and /reel/ and /tv/)
+    m = re.search(r"/(p|reel|tv)/([A-Za-z0-9_-]+)", url)
+    if not m:
+        return None
+    shortcode = m.group(2)
+
+    # Try the embed endpoint (public, no auth)
+    embed_url = f"https://www.instagram.com/p/{shortcode}/embed/"
+    try:
+        req = urllib.request.Request(embed_url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+
+        # Extract video URL from embed page
+        video_match = re.search(r'"video_url":"([^"]+)"', html)
+        if not video_match:
+            video_match = re.search(r'video_url=([^&"]+)', html)
+        if not video_match:
+            return None
+
+        video_url = video_match.group(1).replace("\\u0026", "&").replace("\\/", "/")
+
+        # Extract thumbnail
+        thumb_match = re.search(r'"thumbnail_url":"([^"]+)"', html)
+        thumbnail = thumb_match.group(1).replace("\\u0026", "&").replace("\\/", "/") if thumb_match else ""
+
+        # Extract title
+        title_match = re.search(r'"title":"([^"]+)"', html)
+        title = title_match.group(1).replace("\\/", "/") if title_match else f"Instagram post {shortcode}"
+
+        # Build a minimal yt-dlp-style dict
+        return {
+            "title": title,
+            "uploader": "Instagram",
+            "thumbnail": thumbnail,
+            "duration": 0,
+            "formats": [{
+                "format_id": "embed-0",
+                "ext": "mp4",
+                "height": 720,
+                "width": 1280,
+                "vcodec": "h264",
+                "acodec": "aac",
+                "filesize": 0,
+                "url": video_url,
+            }],
+        }
+    except Exception:
+        return None
 
 
 def yt_dlp_args():
@@ -194,7 +258,15 @@ def probe_meta(url: str) -> dict:
             result = run_json(yt_dlp_args() + ["-J", url])
             d = json.loads(result.stdout)
         except subprocess.CalledProcessError as e:
-            return {"error": parse_yt_error((e.stderr or "yt-dlp failed")[:500])}
+            # For Instagram, try the embed endpoint fallback before giving up
+            if "instagram" in url:
+                embed_result = try_instagram_embed_fallback(url)
+                if embed_result:
+                    d = embed_result
+                else:
+                    return {"error": parse_yt_error((e.stderr or "yt-dlp failed")[:500])}
+            else:
+                return {"error": parse_yt_error((e.stderr or "yt-dlp failed")[:500])}
 
     formats = d.get("formats", [])
 

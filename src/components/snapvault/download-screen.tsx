@@ -21,6 +21,13 @@ export function DownloadScreen() {
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
 
+  // Date label rendered only on the client to avoid SSR/CSR hydration mismatch
+  // (server uses UTC, client uses user's timezone → different day strings)
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    setDateLabel(new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+  }, []);
+
   const media = useSnapVault((s) => s.currentMedia);
   const setMedia = useSnapVault((s) => s.setCurrentMedia);
   const settings = useSnapVault((s) => s.settings);
@@ -135,7 +142,7 @@ export function DownloadScreen() {
             </span>
           </div>
           <span className="font-mono text-[10px] uppercase tracking-wider text-warm">
-            {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            {dateLabel}
           </span>
         </div>
 
