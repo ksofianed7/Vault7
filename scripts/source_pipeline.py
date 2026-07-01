@@ -56,6 +56,11 @@ def parse_yt_error(raw: str) -> str:
     raw = raw or ""
     low = raw.lower()
 
+    if "requested format is not available" in low:
+        return (
+            "YouTube is rate-limiting this server. The PO Token provider may not be working. "
+            "Try again in a few minutes, or restart the service."
+        )
     if "video unavailable" in low:
         return "This video is unavailable. It may have been removed or made private."
     if "private video" in low:
@@ -256,12 +261,7 @@ def try_instagram_embed_fallback(url: str) -> dict | None:
 def yt_dlp_args(url: str = ""):
     """
     Common yt-dlp args. Uses the BgUtils PO Token provider plugin
-    (installed via bgutil-ytdlp-pot-provider) to bypass YouTube bot detection
-    automatically — no cookies, no sign-in. Same approach as Seal/cobalt.tools.
-
-    For Instagram only: adds operator-side cookies (from VAULT_COOKIES_B64 env var)
-    because Instagram requires authentication for all media in 2026.
-    YouTube and TikTok do NOT use cookies.
+    to bypass YouTube bot detection. Requires deno for the PO token script.
     """
     args = [
         "yt-dlp",
@@ -269,6 +269,11 @@ def yt_dlp_args(url: str = ""):
         "--no-warnings",
         "--no-progress",
     ]
+    # Explicitly tell yt-dlp where deno is (it sometimes can't find it in PATH)
+    deno_path = shutil.which("deno")
+    if deno_path:
+        args += ["--js-runtimes", f"deno:{deno_path}"]
+    
     # Use curl_cffi impersonation for TikTok/Instagram if available
     try:
         import curl_cffi  # noqa: F401

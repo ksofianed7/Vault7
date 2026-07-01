@@ -60,10 +60,12 @@ RUN cp -r node_modules/@prisma/client .next/standalone/node_modules/@prisma/clie
 RUN cp -r scripts .next/standalone/scripts
 
 # Install deno dependencies for the PO Token provider
-# (node_modules is gitignored, so we install it at build time)
+# This MUST succeed — without it, YouTube downloads fail entirely
 WORKDIR /app/.next/standalone/scripts/pot-provider
-RUN deno install --allow-scripts=npm:canvas --frozen || \
-    echo "deno install failed — PO token script mode may not work, but HTTP mode will still function"
+RUN deno install --allow-scripts=npm:canvas --frozen
+
+# Verify deno is accessible
+RUN deno --version
 
 # Create cache directory for media bundles + database
 RUN mkdir -p /data/media /data/db
