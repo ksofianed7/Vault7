@@ -11,6 +11,10 @@ services:
         value: /data/media
       - key: NODE_ENV
         value: production
+      # Operator sets this in the dashboard for Instagram support.
+      # YouTube and TikTok work WITHOUT this (PO Token provider handles auth).
+      - key: VAULT_COOKIES_B64
+        sync: false
     disk:
       name: vault-cache
       mountPath: /data

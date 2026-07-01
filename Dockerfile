@@ -71,6 +71,12 @@ ENV VAULT_CACHE_DIR=/data/media
 ENV DATABASE_URL=file:/data/db/vault.db
 ENV HOSTNAME=0.0.0.0
 
+# Operator-side Instagram cookies (base64-encoded cookies.txt).
+# Set this at runtime via your host's env var panel, NOT in the Dockerfile.
+# Only needed for Instagram — YouTube and TikTok use the PO Token provider.
+# Example: VAULT_COOKIES_B64=$(base64 -w0 cookies.txt)
+ENV VAULT_COOKIES_B64=""
+
 # Initialize the SQLite database
 RUN cd /app && npx prisma db push --skip-generate || true
 

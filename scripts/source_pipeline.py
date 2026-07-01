@@ -73,10 +73,16 @@ def parse_yt_error(raw: str) -> str:
 
     # Instagram-specific — be honest about the 2026 reality
     if "instagram" in low and ("empty media response" in low or "login" in low or "cookies" in low):
+        if cookies_path():
+            return (
+                "Instagram is blocking this request even with cookies. "
+                "The cookies may be expired — re-export from your browser and "
+                "update the VAULT_COOKIES_B64 env var."
+            )
         return (
-            "Instagram requires authentication in 2026 — even for public posts. "
-            "This is a platform restriction we can't bypass without operator-configured "
-            "server cookies. YouTube and TikTok work without login."
+            "Instagram requires authentication in 2026. The operator needs to set "
+            "the VAULT_COOKIES_B64 env var with Instagram cookies. YouTube and TikTok "
+            "work without login."
         )
 
     # TikTok-specific
@@ -108,6 +114,32 @@ def pot_server_home() -> str:
         if (c / "src" / "generate_once.ts").exists():
             return str(c)
     return ""
+
+
+def cookies_path() -> str | None:
+    """
+    Return path to cookies.txt if the operator has configured it.
+
+    Operator-side cookies: set VAULT_COOKIES_B64 env var to a base64-encoded
+    cookies.txt file content. On first call, we decode it and write to disk.
+    Users never see or upload cookies — this is for Instagram only (YouTube
+    and TikTok use the PO Token provider, no cookies needed).
+    """
+    base = os.environ.get("VAULT_CACHE_DIR", "/home/z/my-project/.cache/media")
+    cookies_file = Path(base) / "cookies.txt"
+
+    # If operator provided cookies via env var, materialize them on disk
+    b64 = os.environ.get("VAULT_COOKIES_B64")
+    if b64 and not cookies_file.exists():
+        try:
+            import base64
+            cookies_file.parent.mkdir(parents=True, exist_ok=True)
+            content = base64.b64decode(b64).decode("utf-8")
+            cookies_file.write_text(content)
+        except Exception:
+            pass  # Bad env var — fall through
+
+    return str(cookies_file) if cookies_file.exists() else None
 
 
 def try_instagram_embed_fallback(url: str) -> dict | None:
@@ -173,11 +205,15 @@ def try_instagram_embed_fallback(url: str) -> dict | None:
         return None
 
 
-def yt_dlp_args():
+def yt_dlp_args(url: str = ""):
     """
     Common yt-dlp args. Uses the BgUtils PO Token provider plugin
     (installed via bgutil-ytdlp-pot-provider) to bypass YouTube bot detection
     automatically — no cookies, no sign-in. Same approach as Seal/cobalt.tools.
+
+    For Instagram only: adds operator-side cookies (from VAULT_COOKIES_B64 env var)
+    because Instagram requires authentication for all media in 2026.
+    YouTube and TikTok do NOT use cookies.
     """
     args = [
         "yt-dlp",
@@ -195,6 +231,11 @@ def yt_dlp_args():
     home = pot_server_home()
     if home:
         args += ["--extractor-args", f"youtubepot-bgutilscript:server_home={home}"]
+    # Add cookies ONLY for Instagram (YouTube/TikTok use PO token, no cookies needed)
+    if url and "instagram" in url:
+        cp = cookies_path()
+        if cp:
+            args += ["--cookies", cp]
     return args
 
 
@@ -224,7 +265,7 @@ def probe_meta(url: str) -> dict:
         d = None
         for client in YT_CLIENTS:
             try:
-                args = yt_dlp_args()
+                args = yt_dlp_args(url)
                 if client != "default":
                     args += ["--extractor-args", f"youtube:player_client={client}"]
                 args += ["-J", url]
@@ -255,7 +296,7 @@ def probe_meta(url: str) -> dict:
         else:
             platform = "unknown"
         try:
-            result = run_json(yt_dlp_args() + ["-J", url])
+            result = run_json(yt_dlp_args(url) + ["-J", url])
             d = json.loads(result.stdout)
         except subprocess.CalledProcessError as e:
             # For Instagram, try the embed endpoint fallback before giving up
@@ -391,7 +432,7 @@ def download_source(url: str, out_path: Path) -> str:
         last_err = None
         for client in YT_CLIENTS:
             try:
-                args = yt_dlp_args()
+                args = yt_dlp_args(url)
                 if client != "default":
                     args += ["--extractor-args", f"youtube:player_client={client}"]
                 args += [
@@ -409,7 +450,7 @@ def download_source(url: str, out_path: Path) -> str:
                 continue
         raise RuntimeError(parse_yt_error(last_err or "yt-dlp download failed"))
     else:
-        run(yt_dlp_args() + [
+        run(yt_dlp_args(url) + [
             "-f", "best[ext=mp4][height<=720]/best[height<=720]/best",
             "--merge-output-format", "mp4",
             "-o", str(out_path),
@@ -424,7 +465,7 @@ def _yt_download_with_fallback(url: str, format_id: str, out_template: str):
         last_err = None
         for client in YT_CLIENTS:
             try:
-                args = yt_dlp_args()
+                args = yt_dlp_args(url)
                 if client != "default":
                     args += ["--extractor-args", f"youtube:player_client={client}"]
                 args += ["-f", format_id, "-o", out_template, url]
@@ -437,7 +478,7 @@ def _yt_download_with_fallback(url: str, format_id: str, out_template: str):
                 continue
         raise RuntimeError(parse_yt_error(last_err or "yt-dlp download failed"))
     else:
-        run(yt_dlp_args() + ["-f", format_id, "-o", out_template, url])
+        run(yt_dlp_args(url) + ["-f", format_id, "-o", out_template, url])
 
 
 def download_quality(url: str, format_id: str, out_path: Path, ext: str, start=None, end=None):

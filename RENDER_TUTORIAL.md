@@ -70,6 +70,7 @@ You need to create the repo on GitHub first:
 |-----|-------|
 | `VAULT_CACHE_DIR` | `/data/media` |
 | `NODE_ENV` | `production` |
+| `VAULT_COOKIES_B64` | *(your base64 Instagram cookies — optional, only for Instagram. See DEPLOY.md)* |
 
 6. Scroll down to **Disks** and click **Add Disk**:
 

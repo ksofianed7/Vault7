@@ -148,7 +148,7 @@ are the right tools.
 
 ---
 
-## How YouTube auth works (no cookies)
+## How YouTube + TikTok auth works (no cookies)
 
 Vault uses the [BgUtils PO Token provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider)
 — a yt-dlp plugin that generates Proof-of-Origin tokens automatically using
@@ -162,10 +162,44 @@ The PO token makes YouTube think the request is coming from a legitimate
 browser session, bypassing the "Sign in to confirm you're not a bot" wall.
 Tokens are generated on-demand and cached, so there's no maintenance.
 
-**Limits:** TikTok and Instagram have their own anti-bot systems that the PO
-token doesn't help with. Those may still fail occasionally — the multi-client
-fallback (`android`, `tv`, `ios`, etc.) handles most cases, but some content
-genuinely can't be downloaded (private, members-only, region-locked).
+**YouTube and TikTok do NOT need cookies.** They work out of the box.
+
+---
+
+## Instagram cookies (operator-side, required for Instagram)
+
+Instagram requires authentication for ALL media access in 2026 — even public
+posts. There's no free way around this. Vault uses operator-side cookies
+(set via env var) so users never see anything about cookies.
+
+### One-time Instagram cookie setup
+
+1. **In your browser**, install the [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookies-txt-locally/cclelndahbckbenkjhflpdbgdldlbecc) browser extension
+2. **Log into Instagram** in that browser
+3. Click the extension icon → **Export** → save as `cookies.txt`
+4. **Base64-encode it** so you can paste it into an env var:
+   ```bash
+   # Linux / WSL / Git Bash:
+   base64 -w0 cookies.txt
+
+   # macOS:
+   base64 -i cookies.txt
+
+   # Windows PowerShell:
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("cookies.txt"))
+   ```
+5. Copy the entire base64 output to your clipboard
+6. Set it as the `VAULT_COOKIES_B64` environment variable on your hosting provider:
+   - **Render:** Dashboard → your service → Environment → Add `VAULT_COOKIES_B64`
+   - **Railway:** Dashboard → your service → Variables → Add `VAULT_COOKIES_B64`
+   - **Fly.io:** `fly secrets set VAULT_COOKIES_B64="<paste here>"`
+
+Cookies expire after ~6-12 months. When Instagram stops working, re-export
+and update the env var.
+
+**Security note:** These cookies grant access to your Instagram account. Treat
+them like a password. Never commit them to git. Hosting providers encrypt env
+vars at rest.
 
 ---
 

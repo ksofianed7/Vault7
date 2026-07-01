@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Film, Music } from "lucide-react";
+import { Film, Music, Instagram, Check, AlertCircle } from "lucide-react";
 import { useSnapVault, type DownloadFormat } from "@/lib/store";
 import { toast } from "sonner";
 import { VaultLogo } from "./logo";
@@ -10,6 +11,16 @@ export function SettingsScreen() {
   const settings = useSnapVault((s) => s.settings);
   const update = useSnapVault((s) => s.updateSettings);
   const clearHistory = useSnapVault((s) => s.clearHistory);
+
+  // Read-only Instagram auth status (operator-configured via env var)
+  const [igAuthed, setIgAuthed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth-status")
+      .then((r) => r.json())
+      .then((d) => setIgAuthed(!!d.instagram))
+      .catch(() => setIgAuthed(false));
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -76,16 +87,52 @@ export function SettingsScreen() {
             <div className="flex-1">
               <div className="font-display text-[16px] font-medium text-cream">Vault</div>
               <div className="font-mono text-[9px] uppercase tracking-wider text-warm">
-                v.04 · po-token auth
+                v.05 · po-token + ig cookies
               </div>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-[rgba(245,239,224,0.05)] space-y-2">
+            {/* Platform auth status — read-only, shows what's working */}
+            <div className="flex items-center justify-between font-mono text-[10px]">
+              <span className="flex items-center gap-1.5 text-cream/70">
+                <Check className="h-3 w-3 text-coral" strokeWidth={3} />
+                YouTube
+              </span>
+              <span className="text-warm">PO Token — no login</span>
+            </div>
+            <div className="flex items-center justify-between font-mono text-[10px]">
+              <span className="flex items-center gap-1.5 text-cream/70">
+                <Check className="h-3 w-3 text-coral" strokeWidth={3} />
+                TikTok
+              </span>
+              <span className="text-warm">Impersonation — no login</span>
+            </div>
+            <div className="flex items-center justify-between font-mono text-[10px]">
+              <span className="flex items-center gap-1.5 text-cream/70">
+                <Instagram className="h-3 w-3" />
+                Instagram
+              </span>
+              {igAuthed === null ? (
+                <span className="text-warm">…</span>
+              ) : igAuthed ? (
+                <span className="flex items-center gap-1 text-amber">
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                  Cookies configured
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-warm">
+                  <AlertCircle className="h-3 w-3" />
+                  Needs operator cookies
+                </span>
+              )}
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-[rgba(245,239,224,0.05)] font-mono text-[10px] leading-relaxed text-warm">
             Vault uses{" "}
             <code className="text-coral">yt-dlp</code> with the{" "}
-            <code className="text-coral">BgUtils PO Token</code> provider to
-            bypass YouTube bot detection automatically — no cookies, no sign-in.
-            Real metadata, real storyboards, real waveforms, real downloads.
+            <code className="text-coral">BgUtils PO Token</code> provider for
+            YouTube, and operator-side cookies for Instagram. Real metadata,
+            real storyboards, real waveforms, real downloads.
           </div>
         </div>
       </Section>
