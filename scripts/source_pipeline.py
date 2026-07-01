@@ -121,25 +121,42 @@ def cookies_path() -> str | None:
     Return path to cookies.txt if the operator has configured it.
 
     Operator-side cookies: set VAULT_COOKIES_B64 env var to a base64-encoded
-    cookies.txt file content. On first call, we decode it and write to disk.
-    Users never see or upload cookies — this is for Instagram only (YouTube
-    and TikTok use the PO Token provider, no cookies needed).
+    cookies.txt file content. On each call, we decode and write to disk
+    (overwriting any stale version). Users never see or upload cookies —
+    this is for Instagram only (YouTube and TikTok use the PO Token provider).
     """
-    base = os.environ.get("VAULT_CACHE_DIR", "/home/z/my-project/.cache/media")
-    cookies_file = Path(base) / "cookies.txt"
+    b64 = os.environ.get("VAULT_COOKIES_B64", "").strip()
+    if not b64:
+        return None
 
-    # If operator provided cookies via env var, materialize them on disk
-    b64 = os.environ.get("VAULT_COOKIES_B64")
-    if b64 and not cookies_file.exists():
+    # Try multiple cache locations (Railway/Render mount /data, fallback to /tmp)
+    cache_dir = os.environ.get("VAULT_CACHE_DIR", "/home/z/my-project/.cache/media")
+    candidate_paths = [
+        Path(cache_dir) / "cookies.txt",
+        Path("/data/media/cookies.txt"),
+        Path("/tmp/vault-cookies.txt"),
+    ]
+
+    # Decode the base64 cookies
+    try:
+        import base64
+        content = base64.b64decode(b64).decode("utf-8")
+        # Basic validation — must look like a Netscape cookies file
+        if "Netscape" not in content and ".instagram.com" not in content:
+            return None
+    except Exception:
+        return None
+
+    # Write to the first writable location
+    for cookies_file in candidate_paths:
         try:
-            import base64
             cookies_file.parent.mkdir(parents=True, exist_ok=True)
-            content = base64.b64decode(b64).decode("utf-8")
             cookies_file.write_text(content)
+            return str(cookies_file)
         except Exception:
-            pass  # Bad env var — fall through
+            continue
 
-    return str(cookies_file) if cookies_file.exists() else None
+    return None
 
 
 def try_instagram_embed_fallback(url: str) -> dict | None:
@@ -156,53 +173,84 @@ def try_instagram_embed_fallback(url: str) -> dict | None:
         return None
     shortcode = m.group(2)
 
-    # Try the embed endpoint (public, no auth)
-    embed_url = f"https://www.instagram.com/p/{shortcode}/embed/"
-    try:
-        req = urllib.request.Request(embed_url, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml",
-            "Accept-Language": "en-US,en;q=0.9",
-        })
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            html = resp.read().decode("utf-8", errors="ignore")
+    # Try multiple embed endpoint variants
+    embed_urls = [
+        f"https://www.instagram.com/p/{shortcode}/embed/",
+        f"https://www.instagram.com/reel/{shortcode}/embed/",
+        f"https://www.instagram.com/p/{shortcode}/embed/captioned/",
+    ]
 
-        # Extract video URL from embed page
-        video_match = re.search(r'"video_url":"([^"]+)"', html)
-        if not video_match:
-            video_match = re.search(r'video_url=([^&"]+)', html)
-        if not video_match:
-            return None
+    for embed_url in embed_urls:
+        try:
+            req = urllib.request.Request(embed_url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://www.instagram.com/",
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                html = resp.read().decode("utf-8", errors="ignore")
 
-        video_url = video_match.group(1).replace("\\u0026", "&").replace("\\/", "/")
+            # Extract video URL — try multiple patterns
+            video_url = None
+            patterns = [
+                r'"video_url":"([^"]+)"',
+                r'video_url=([^&"]+)',
+                r'"contentURL":"([^"]+)"',
+                r'"embedUrl":"([^"]+)"',
+                r'src="(https://[^"]*\.mp4[^"]*)"',
+                r'data-video-url="([^"]+)"',
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, html)
+                if match:
+                    video_url = match.group(1).replace("\\u0026", "&").replace("\\/", "/")
+                    break
 
-        # Extract thumbnail
-        thumb_match = re.search(r'"thumbnail_url":"([^"]+)"', html)
-        thumbnail = thumb_match.group(1).replace("\\u0026", "&").replace("\\/", "/") if thumb_match else ""
+            if not video_url:
+                continue
 
-        # Extract title
-        title_match = re.search(r'"title":"([^"]+)"', html)
-        title = title_match.group(1).replace("\\/", "/") if title_match else f"Instagram post {shortcode}"
+            # Extract thumbnail
+            thumbnail = ""
+            thumb_patterns = [r'"thumbnail_url":"([^"]+)"', r'"thumbnailURL":"([^"]+)"']
+            for pattern in thumb_patterns:
+                match = re.search(pattern, html)
+                if match:
+                    thumbnail = match.group(1).replace("\\u0026", "&").replace("\\/", "/")
+                    break
 
-        # Build a minimal yt-dlp-style dict
-        return {
-            "title": title,
-            "uploader": "Instagram",
-            "thumbnail": thumbnail,
-            "duration": 0,
-            "formats": [{
-                "format_id": "embed-0",
-                "ext": "mp4",
-                "height": 720,
-                "width": 1280,
-                "vcodec": "h264",
-                "acodec": "aac",
-                "filesize": 0,
-                "url": video_url,
-            }],
-        }
-    except Exception:
-        return None
+            # Extract title
+            title = f"Instagram post {shortcode}"
+            title_patterns = [r'"title":"([^"]+)"', r'<title>([^<]+)</title>']
+            for pattern in title_patterns:
+                match = re.search(pattern, html)
+                if match:
+                    title = match.group(1).replace("\\/", "/").strip()
+                    if "Instagram" in title and len(title) < 30:
+                        title = f"Instagram post {shortcode}"
+                    break
+
+            # Build a minimal yt-dlp-style dict
+            return {
+                "title": title,
+                "uploader": "Instagram",
+                "thumbnail": thumbnail,
+                "duration": 0,
+                "formats": [{
+                    "format_id": "embed-0",
+                    "ext": "mp4",
+                    "height": 720,
+                    "width": 1280,
+                    "vcodec": "h264",
+                    "acodec": "aac",
+                    "filesize": 0,
+                    "url": video_url,
+                }],
+            }
+        except Exception:
+            continue
+
+    return None
 
 
 def yt_dlp_args(url: str = ""):
@@ -295,18 +343,26 @@ def probe_meta(url: str) -> dict:
             platform = "tiktok"
         else:
             platform = "unknown"
-        try:
-            result = run_json(yt_dlp_args(url) + ["-J", url])
-            d = json.loads(result.stdout)
-        except subprocess.CalledProcessError as e:
-            # For Instagram, try the embed endpoint fallback before giving up
-            if "instagram" in url:
-                embed_result = try_instagram_embed_fallback(url)
-                if embed_result:
-                    d = embed_result
-                else:
-                    return {"error": parse_yt_error((e.stderr or "yt-dlp failed")[:500])}
+
+        # For Instagram, try the embed endpoint FIRST (no cookies needed, fast)
+        # before falling back to yt-dlp with cookies
+        if "instagram" in url:
+            embed_result = try_instagram_embed_fallback(url)
+            if embed_result:
+                d = embed_result
             else:
+                # Embed failed — try yt-dlp with cookies (if configured)
+                try:
+                    result = run_json(yt_dlp_args(url) + ["-J", url])
+                    d = json.loads(result.stdout)
+                except subprocess.CalledProcessError as e:
+                    return {"error": parse_yt_error((e.stderr or "yt-dlp failed")[:500])}
+        else:
+            # TikTok and other platforms — yt-dlp directly
+            try:
+                result = run_json(yt_dlp_args(url) + ["-J", url])
+                d = json.loads(result.stdout)
+            except subprocess.CalledProcessError as e:
                 return {"error": parse_yt_error((e.stderr or "yt-dlp failed")[:500])}
 
     formats = d.get("formats", [])
@@ -428,6 +484,30 @@ def download_source(url: str, out_path: Path) -> str:
     url = normalize_url(url)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Instagram — try embed fallback first (no cookies needed)
+    if "instagram" in url:
+        embed_data = try_instagram_embed_fallback(url)
+        if embed_data and embed_data.get("formats"):
+            direct_url = embed_data["formats"][0]["url"]
+            try:
+                run(["ffmpeg", "-y", "-i", direct_url, "-c", "copy", str(out_path)])
+                return str(out_path)
+            except Exception:
+                pass  # Fall through to yt-dlp
+
+        # Embed failed — try yt-dlp with cookies (if configured)
+        try:
+            run(yt_dlp_args(url) + [
+                "-f", "best[ext=mp4][height<=720]/best[height<=720]/best",
+                "--merge-output-format", "mp4",
+                "-o", str(out_path),
+                url,
+            ])
+            return str(out_path)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(parse_yt_error((e.stderr or "")[:500]))
+
+    # YouTube — multi-client fallback with PO token
     if "youtube" in url or "youtu.be" in url:
         last_err = None
         for client in YT_CLIENTS:
@@ -449,14 +529,15 @@ def download_source(url: str, out_path: Path) -> str:
                     raise RuntimeError(parse_yt_error(last_err))
                 continue
         raise RuntimeError(parse_yt_error(last_err or "yt-dlp download failed"))
-    else:
-        run(yt_dlp_args(url) + [
-            "-f", "best[ext=mp4][height<=720]/best[height<=720]/best",
-            "--merge-output-format", "mp4",
-            "-o", str(out_path),
-            url,
-        ])
-        return str(out_path)
+
+    # TikTok and other platforms
+    run(yt_dlp_args(url) + [
+        "-f", "best[ext=mp4][height<=720]/best[height<=720]/best",
+        "--merge-output-format", "mp4",
+        "-o", str(out_path),
+        url,
+    ])
+    return str(out_path)
 
 
 def _yt_download_with_fallback(url: str, format_id: str, out_template: str):
@@ -482,11 +563,55 @@ def _yt_download_with_fallback(url: str, format_id: str, out_template: str):
 
 
 def download_quality(url: str, format_id: str, out_path: Path, ext: str, start=None, end=None):
-    """Download a specific format (with trim if requested)."""
+    """
+    Download a specific format (with trim if requested).
+
+    Special case: if format_id is "embed-0", it means the metadata came from
+    the Instagram embed fallback — we need to re-fetch the direct video URL
+    and download it directly with ffmpeg (not yt-dlp).
+    """
     url = normalize_url(url)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp())
     try:
+        # Special case: Instagram embed fallback — direct URL download
+        if format_id == "embed-0" and "instagram" in url:
+            # Re-fetch the direct video URL from the embed endpoint
+            embed_data = try_instagram_embed_fallback(url)
+            if not embed_data or not embed_data.get("formats"):
+                raise RuntimeError("Couldn't re-fetch Instagram video URL")
+
+            direct_url = embed_data["formats"][0]["url"]
+            # Download the direct URL with ffmpeg (handles redirects + cookies)
+            raw_file = tmp / "raw.mp4"
+            download_cmd = ["ffmpeg", "-y", "-i", direct_url, "-c", "copy", str(raw_file)]
+            if start is not None:
+                download_cmd = ["ffmpeg", "-y", "-ss", str(start), "-i", direct_url, "-to", str(end or ""), "-c", "copy", str(raw_file)]
+            run(download_cmd)
+
+            if ext == "mp3":
+                # Convert to MP3
+                cmd = ["ffmpeg", "-y", "-i", str(raw_file), "-c:a", "libmp3lame", "-q:a", "2"]
+                if start is not None:
+                    cmd += ["-ss", str(start)]
+                if end is not None:
+                    cmd += ["-to", str(end)]
+                cmd += [str(out_path)]
+                run(cmd)
+            else:
+                if start is not None or end is not None:
+                    cmd = ["ffmpeg", "-y"]
+                    if start is not None:
+                        cmd += ["-ss", str(start)]
+                    if end is not None:
+                        cmd += ["-to", str(end)]
+                    cmd += ["-i", str(raw_file), "-c", "copy", str(out_path)]
+                    run(cmd)
+                else:
+                    shutil.copy2(raw_file, out_path)
+            return str(out_path)
+
+        # Normal yt-dlp download path
         if ext == "mp3":
             _yt_download_with_fallback(url, format_id, str(tmp / "raw.%(ext)s"))
             downloaded = list(tmp.glob("raw.*"))
