@@ -587,8 +587,20 @@ def download_source(url: str, out_path: Path) -> str:
     return str(out_path)
 
 
-def _yt_download_with_fallback(url: str, format_id: str, out_template: str):
-    """Run yt-dlp download with multi-client fallback for YouTube."""
+def _yt_download_with_fallback(url: str, format_id: str, out_template: str, ext: str = "mp4"):
+    """Run yt-dlp download with multi-client fallback for YouTube.
+
+    Uses format_id/best fallback so if the exact format isn't available
+    (common for long videos where YouTube rotates format IDs), yt-dlp
+    falls back to the best available format instead of failing.
+    """
+    # Build a format selector that tries the exact format_id first,
+    # then falls back to best available
+    if ext == "mp3":
+        format_selector = f"{format_id}/bestaudio/best"
+    else:
+        format_selector = f"{format_id}/best[ext=mp4]/best"
+
     if "youtube" in url or "youtu.be" in url:
         last_err = None
         for client in YT_CLIENTS:
@@ -596,7 +608,7 @@ def _yt_download_with_fallback(url: str, format_id: str, out_template: str):
                 args = yt_dlp_args(url)
                 if client != "default":
                     args += ["--extractor-args", f"youtube:player_client={client}"]
-                args += ["-f", format_id, "-o", out_template, url]
+                args += ["-f", format_selector, "--merge-output-format", "mp4", "-o", out_template, url]
                 run(args)
                 return
             except subprocess.CalledProcessError as e:
@@ -606,7 +618,7 @@ def _yt_download_with_fallback(url: str, format_id: str, out_template: str):
                 continue
         raise RuntimeError(parse_yt_error(last_err or "yt-dlp download failed"))
     else:
-        run(yt_dlp_args(url) + ["-f", format_id, "-o", out_template, url])
+        run(yt_dlp_args(url) + ["-f", format_selector, "--merge-output-format", "mp4", "-o", out_template, url])
 
 
 def download_quality(url: str, format_id: str, out_path: Path, ext: str, start=None, end=None):
@@ -629,11 +641,15 @@ def download_quality(url: str, format_id: str, out_path: Path, ext: str, start=N
                 raise RuntimeError("Couldn't re-fetch Instagram video URL")
 
             direct_url = embed_data["formats"][0]["url"]
-            # Download the direct URL with ffmpeg (handles redirects + cookies)
+            # Download the direct URL with ffmpeg (handles redirects)
             raw_file = tmp / "raw.mp4"
-            download_cmd = ["ffmpeg", "-y", "-i", direct_url, "-c", "copy", str(raw_file)]
+            download_cmd = ["ffmpeg", "-y"]
             if start is not None:
-                download_cmd = ["ffmpeg", "-y", "-ss", str(start), "-i", direct_url, "-to", str(end or ""), "-c", "copy", str(raw_file)]
+                download_cmd += ["-ss", str(start)]
+            download_cmd += ["-i", direct_url]
+            if end is not None:
+                download_cmd += ["-to", str(end)]
+            download_cmd += ["-c", "copy", str(raw_file)]
             run(download_cmd)
 
             if ext == "mp3":
@@ -660,7 +676,7 @@ def download_quality(url: str, format_id: str, out_path: Path, ext: str, start=N
 
         # Normal yt-dlp download path
         if ext == "mp3":
-            _yt_download_with_fallback(url, format_id, str(tmp / "raw.%(ext)s"))
+            _yt_download_with_fallback(url, format_id, str(tmp / "raw.%(ext)s"), ext="mp3")
             downloaded = list(tmp.glob("raw.*"))
             if not downloaded:
                 raise RuntimeError("Download produced no file")
@@ -672,7 +688,7 @@ def download_quality(url: str, format_id: str, out_path: Path, ext: str, start=N
             cmd += ["-i", str(downloaded[0]), "-c:a", "libmp3lame", "-q:a", "2", str(out_path)]
             run(cmd)
         else:
-            _yt_download_with_fallback(url, format_id, str(tmp / "raw.%(ext)s"))
+            _yt_download_with_fallback(url, format_id, str(tmp / "raw.%(ext)s"), ext="mp4")
             downloaded = list(tmp.glob("raw.*"))
             if not downloaded:
                 raise RuntimeError("Download produced no file")
