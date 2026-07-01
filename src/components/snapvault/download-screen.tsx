@@ -228,7 +228,7 @@ export function DownloadScreen() {
         )}
       </AnimatePresence>
 
-      {/* Media + controls — two-column on desktop, single column on mobile */}
+      {/* Media + controls — single column, logical flow: preview → format → trim → filename → download */}
       <AnimatePresence>
         {media && !loading && (
           <motion.div
@@ -236,133 +236,125 @@ export function DownloadScreen() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.4, ease: [0.2, 0.9, 0.3, 1] }}
-            className="space-y-6 lg:grid lg:grid-cols-[1.2fr_1fr] lg:gap-12 lg:space-y-0"
+            className="space-y-6"
           >
-            {/* Left column: preview + filename + download */}
-            <div className="space-y-6">
-              <MediaPreview meta={media} />
+            <MediaPreview meta={media} />
 
-              {/* Custom filename input */}
-              <div>
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-warm">
-                    <FileText className="h-3 w-3" />
-                    Filename
-                  </span>
-                  <button
-                    onClick={() => {
-                      // Apply the template from settings
-                      const tpl = settings.filenameTemplate || "{title}";
-                      const selectedQ = media.qualities.find((q) => q.id === qualityId);
-                      const name = applyFilenameTemplate(tpl, {
-                        title: media.title,
-                        author: media.author,
-                        platform: media.platform,
-                        quality: selectedQ?.label ?? "",
-                        format: format,
-                        ext: selectedQ?.ext ?? "mp4",
-                      }).replace(/\.[^.]+$/, ""); // remove ext (added on download)
-                      setCustomFilename(name);
-                    }}
-                    className="font-mono text-[9px] uppercase tracking-wider text-coral hover:text-cream"
-                  >
-                    Use template
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={customFilename}
-                  onChange={(e) => setCustomFilename(e.target.value)}
-                  placeholder={media.title}
-                  className="surface-inset w-full rounded-md px-4 py-3 font-mono text-[12px] text-cream placeholder:text-[#5a5448] outline-none focus:border-coral/40 transition"
-                />
-                <div className="mt-1.5 px-1 font-mono text-[9px] text-warm">
-                  .{selectedQuality?.ext ?? "mp4"} — leave empty to use video title
-                </div>
-              </div>
-
-              {/* Download */}
-              <DownloadButton
+            {/* Format + quality */}
+            <div className="surface rounded-lg p-4">
+              <FormatPicker
                 meta={media}
                 format={format}
-                quality={selectedQuality}
-                trimStart={trimStart}
-                trimEnd={trimEnd}
-                customFilename={customFilename}
-                onDone={() => {}}
+                setFormat={setFormat}
+                qualityId={qualityId}
+                setQualityId={setQualityId}
               />
             </div>
 
-            {/* Right column: format picker + trim */}
-            <div className="space-y-6">
-              {/* Format + quality */}
-              <div className="surface rounded-lg p-4">
-                <FormatPicker
-                  meta={media}
-                  format={format}
-                  setFormat={setFormat}
-                  qualityId={qualityId}
-                  setQualityId={setQualityId}
-                />
-              </div>
+            {/* Trim section */}
+            <div>
+              <button
+                onClick={() => setShowTrim((s) => !s)}
+                className="flex w-full items-center justify-between py-1"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="font-display text-[20px] font-medium tracking-tight text-cream">
+                    Trim
+                  </span>
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-warm">
+                    {showTrim ? "collapse" : "expand"}
+                  </span>
+                  {preparingBundle && (
+                    <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-coral">
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      preparing
+                    </span>
+                  )}
+                  {bundle && !preparingBundle && (
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-amber">
+                      ready
+                    </span>
+                  )}
+                </div>
+                {showTrim ? (
+                  <ChevronUp className="h-4 w-4 text-warm" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-warm" />
+                )}
+              </button>
 
-              {/* Trim section */}
-              <div>
+              <AnimatePresence initial={false}>
+                {showTrim && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3, ease: [0.2, 0.9, 0.3, 1] }}
+                    className="overflow-hidden mt-3"
+                  >
+                    <TrimTool
+                      duration={bundle?.duration ?? media.duration}
+                      trimStart={trimStart}
+                      trimEnd={trimEnd}
+                      setTrimStart={setTrimStart}
+                      setTrimEnd={setTrimEnd}
+                      bundle={bundle}
+                      format={format}
+                      preparing={preparingBundle}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Custom filename input */}
+            <div>
+              <div className="mb-2 flex items-center justify-between px-1">
+                <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-warm">
+                  <FileText className="h-3 w-3" />
+                  Filename
+                </span>
                 <button
-                  onClick={() => setShowTrim((s) => !s)}
-                  className="flex w-full items-center justify-between py-1"
+                  onClick={() => {
+                    const tpl = settings.filenameTemplate || "{title}";
+                    const selectedQ = media.qualities.find((q) => q.id === qualityId);
+                    const name = applyFilenameTemplate(tpl, {
+                      title: media.title,
+                      author: media.author,
+                      platform: media.platform,
+                      quality: selectedQ?.label ?? "",
+                      format: format,
+                      ext: selectedQ?.ext ?? "mp4",
+                    }).replace(/\.[^.]+$/, "");
+                    setCustomFilename(name);
+                  }}
+                  className="font-mono text-[9px] uppercase tracking-wider text-coral hover:text-cream"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-display text-[20px] font-medium tracking-tight text-cream">
-                      Trim
-                    </span>
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-warm">
-                      {showTrim ? "collapse" : "expand"}
-                    </span>
-                    {/* Media bundle status indicator */}
-                    {preparingBundle && (
-                      <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-coral">
-                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                        preparing
-                      </span>
-                    )}
-                    {bundle && !preparingBundle && (
-                      <span className="font-mono text-[9px] uppercase tracking-wider text-amber">
-                        ready
-                      </span>
-                    )}
-                  </div>
-                  {showTrim ? (
-                    <ChevronUp className="h-4 w-4 text-warm" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-warm" />
-                  )}
+                  Use template
                 </button>
-
-                <AnimatePresence initial={false}>
-                  {showTrim && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3, ease: [0.2, 0.9, 0.3, 1] }}
-                      className="overflow-hidden mt-3"
-                    >
-                      <TrimTool
-                        duration={bundle?.duration ?? media.duration}
-                        trimStart={trimStart}
-                        trimEnd={trimEnd}
-                        setTrimStart={setTrimStart}
-                        setTrimEnd={setTrimEnd}
-                        bundle={bundle}
-                        format={format}
-                        preparing={preparingBundle}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              </div>
+              <input
+                type="text"
+                value={customFilename}
+                onChange={(e) => setCustomFilename(e.target.value)}
+                placeholder={media.title}
+                className="surface-inset w-full rounded-md px-4 py-3 font-mono text-[12px] text-cream placeholder:text-[#5a5448] outline-none focus:border-coral/40 transition"
+              />
+              <div className="mt-1.5 px-1 font-mono text-[9px] text-warm">
+                .{selectedQuality?.ext ?? "mp4"} — leave empty to use video title
               </div>
             </div>
+
+            {/* Download */}
+            <DownloadButton
+              meta={media}
+              format={format}
+              quality={selectedQuality}
+              trimStart={trimStart}
+              trimEnd={trimEnd}
+              customFilename={customFilename}
+              onDone={() => {}}
+            />
           </motion.div>
         )}
       </AnimatePresence>

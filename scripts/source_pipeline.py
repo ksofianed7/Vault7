@@ -365,19 +365,29 @@ def probe_meta(url: str) -> dict:
         else:
             platform = "unknown"
 
-        # For Instagram, try the embed endpoint FIRST (no cookies needed, fast)
-        # before falling back to yt-dlp with cookies
+        # For Instagram, try yt-dlp with cookies FIRST (returns better formats),
+        # then fall back to the embed endpoint (no cookies needed)
         if "instagram" in url:
-            embed_result = try_instagram_embed_fallback(url)
-            if embed_result:
-                d = embed_result
-            else:
-                # Embed failed — try yt-dlp with cookies (if configured)
-                try:
-                    result = run_json(yt_dlp_args(url) + ["-J", url])
-                    d = json.loads(result.stdout)
-                except subprocess.CalledProcessError as e:
-                    return {"error": parse_yt_error((e.stderr or "yt-dlp failed")[:500])}
+            # Try yt-dlp with cookies first
+            d = None
+            try:
+                result = run_json(yt_dlp_args(url) + ["-J", url])
+                d = json.loads(result.stdout)
+                # Verify it has actual video formats
+                formats = d.get("formats", [])
+                has_video = any(f.get("height") and f.get("vcodec") != "none" for f in formats)
+                if not has_video:
+                    d = None
+            except subprocess.CalledProcessError:
+                d = None
+
+            # If yt-dlp failed, try embed fallback
+            if d is None:
+                embed_result = try_instagram_embed_fallback(url)
+                if embed_result:
+                    d = embed_result
+                else:
+                    return {"error": parse_yt_error("Instagram requires authentication. The operator needs to set VAULT_COOKIES_B64 env var.")}
         else:
             # TikTok and other platforms — yt-dlp directly
             try:
@@ -590,16 +600,17 @@ def download_source(url: str, out_path: Path) -> str:
 def _yt_download_with_fallback(url: str, format_id: str, out_template: str, ext: str = "mp4"):
     """Run yt-dlp download with multi-client fallback for YouTube.
 
-    Uses format_id/best fallback so if the exact format isn't available
-    (common for long videos where YouTube rotates format IDs), yt-dlp
-    falls back to the best available format instead of failing.
+    YouTube DASH formats are video-ONLY (no audio). We MUST use format_id+bestaudio
+    to download both video and audio, then yt-dlp merges them automatically.
+    Without the +bestaudio, downloads fail with "Requested format is not available"
+    or produce silent videos.
     """
-    # Build a format selector that tries the exact format_id first,
-    # then falls back to best available
     if ext == "mp3":
+        # For audio: try the exact format, then bestaudio, then best
         format_selector = f"{format_id}/bestaudio/best"
     else:
-        format_selector = f"{format_id}/best[ext=mp4]/best"
+        # For video: try format+bestaudio (merged), then just format, then best
+        format_selector = f"{format_id}+bestaudio/{format_id}/best[ext=mp4]/best"
 
     if "youtube" in url or "youtu.be" in url:
         last_err = None
