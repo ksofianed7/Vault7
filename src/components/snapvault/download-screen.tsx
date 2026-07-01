@@ -127,9 +127,9 @@ export function DownloadScreen() {
   })();
 
   return (
-    <div className="space-y-6">
-      {/* Editorial hero — asymmetric, not centered */}
-      <div className="relative">
+    <div className="space-y-6 lg:space-y-8">
+      {/* Editorial hero — only on mobile (desktop has the top bar masthead) */}
+      <div className="relative lg:hidden">
         {/* Issue / date marker */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -162,6 +162,16 @@ export function DownloadScreen() {
         <div className="hairline mt-6" />
       </div>
 
+      {/* Desktop hero — smaller, inline */}
+      <div className="hidden lg:block">
+        <h1 className="font-display text-[36px] leading-[1] tracking-tight text-cream">
+          Keep the frame, <span className="italic font-light text-coral">drop the noise.</span>
+        </h1>
+        <p className="mt-3 text-[13px] leading-relaxed text-cream/50 max-w-md">
+          A considered downloader for YouTube, Instagram, and TikTok. Pick the moment, choose the format, archive it.
+        </p>
+      </div>
+
       {/* URL input with figure caption */}
       <div>
         <div className="mb-2 flex items-center justify-between px-1">
@@ -192,7 +202,7 @@ export function DownloadScreen() {
         )}
       </AnimatePresence>
 
-      {/* Media + controls */}
+      {/* Media + controls — two-column on desktop, single column on mobile */}
       <AnimatePresence>
         {media && !loading && (
           <motion.div
@@ -200,87 +210,93 @@ export function DownloadScreen() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.4, ease: [0.2, 0.9, 0.3, 1] }}
-            className="space-y-6"
+            className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0"
           >
-            <MediaPreview meta={media} />
+            {/* Left column: preview + download */}
+            <div className="space-y-6">
+              <MediaPreview meta={media} />
 
-            {/* Format + quality */}
-            <div className="surface rounded-lg p-4">
-              <FormatPicker
+              {/* Download */}
+              <DownloadButton
                 meta={media}
                 format={format}
-                setFormat={setFormat}
-                qualityId={qualityId}
-                setQualityId={setQualityId}
+                quality={selectedQuality}
+                trimStart={trimStart}
+                trimEnd={trimEnd}
+                onDone={() => {}}
               />
             </div>
 
-            {/* Trim section */}
-            <div>
-              <button
-                onClick={() => setShowTrim((s) => !s)}
-                className="flex w-full items-center justify-between py-1"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="font-display text-[20px] font-medium tracking-tight text-cream">
-                    Trim
-                  </span>
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-warm">
-                    {showTrim ? "collapse" : "expand"}
-                  </span>
-                  {/* Media bundle status indicator */}
-                  {preparingBundle && (
-                    <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-coral">
-                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      preparing
-                    </span>
-                  )}
-                  {bundle && !preparingBundle && (
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-amber">
-                      ready
-                    </span>
-                  )}
-                </div>
-                {showTrim ? (
-                  <ChevronUp className="h-4 w-4 text-warm" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-warm" />
-                )}
-              </button>
+            {/* Right column: format picker + trim */}
+            <div className="space-y-6">
+              {/* Format + quality */}
+              <div className="surface rounded-lg p-4">
+                <FormatPicker
+                  meta={media}
+                  format={format}
+                  setFormat={setFormat}
+                  qualityId={qualityId}
+                  setQualityId={setQualityId}
+                />
+              </div>
 
-              <AnimatePresence initial={false}>
-                {showTrim && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3, ease: [0.2, 0.9, 0.3, 1] }}
-                    className="overflow-hidden mt-3"
-                  >
-                    <TrimTool
-                      duration={bundle?.duration ?? media.duration}
-                      trimStart={trimStart}
-                      trimEnd={trimEnd}
-                      setTrimStart={setTrimStart}
-                      setTrimEnd={setTrimEnd}
-                      bundle={bundle}
-                      format={format}
-                      preparing={preparingBundle}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Trim section */}
+              <div>
+                <button
+                  onClick={() => setShowTrim((s) => !s)}
+                  className="flex w-full items-center justify-between py-1"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-display text-[20px] font-medium tracking-tight text-cream">
+                      Trim
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-warm">
+                      {showTrim ? "collapse" : "expand"}
+                    </span>
+                    {/* Media bundle status indicator */}
+                    {preparingBundle && (
+                      <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-coral">
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        preparing
+                      </span>
+                    )}
+                    {bundle && !preparingBundle && (
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-amber">
+                        ready
+                      </span>
+                    )}
+                  </div>
+                  {showTrim ? (
+                    <ChevronUp className="h-4 w-4 text-warm" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-warm" />
+                  )}
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {showTrim && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3, ease: [0.2, 0.9, 0.3, 1] }}
+                      className="overflow-hidden mt-3"
+                    >
+                      <TrimTool
+                        duration={bundle?.duration ?? media.duration}
+                        trimStart={trimStart}
+                        trimEnd={trimEnd}
+                        setTrimStart={setTrimStart}
+                        setTrimEnd={setTrimEnd}
+                        bundle={bundle}
+                        format={format}
+                        preparing={preparingBundle}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-
-            {/* Download */}
-            <DownloadButton
-              meta={media}
-              format={format}
-              quality={selectedQuality}
-              trimStart={trimStart}
-              trimEnd={trimEnd}
-              onDone={() => {}}
-            />
           </motion.div>
         )}
       </AnimatePresence>
