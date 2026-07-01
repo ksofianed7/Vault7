@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
-import { mkdir, writeFile, readFile, access } from "node:fs/promises";
+import { mkdir, writeFile, readFile, access, readdir, stat, rm } from "node:fs/promises";
 import path from "node:path";
 
 const exec = promisify(execFile);
@@ -15,6 +15,39 @@ async function exists(p: string) {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Clean up old media bundles to prevent disk from filling up.
+ * Deletes bundles + downloads older than 30 minutes.
+ * For a 2-user app, 30 min cache is plenty — users who come back will
+ * get a fresh bundle (takes ~15s to regenerate).
+ */
+async function cleanupOldBundles() {
+  const bundlesDir = path.join(CACHE_ROOT, "bundles");
+  const downloadsDir = path.join(CACHE_ROOT, "downloads");
+  const THIRTY_MIN = 30 * 60 * 1000;
+  const now = Date.now();
+
+  for (const dir of [bundlesDir, downloadsDir]) {
+    try {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const entryPath = path.join(dir, entry.name);
+        try {
+          const stats = await stat(entryPath);
+          if (now - stats.mtimeMs > THIRTY_MIN) {
+            await rm(entryPath, { recursive: true, force: true });
+          }
+        } catch {
+          // Skip if can't stat
+        }
+      }
+    } catch {
+      // Dir doesn't exist yet — fine
+    }
   }
 }
 
@@ -36,6 +69,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing url" }, { status: 400 });
     }
 
+    // Clean up old bundles (older than 30 min) to free disk — fire and forget
+    cleanupOldBundles().catch(() => {});
+
     const bundleId = createHash("sha1").update(url).digest("hex").slice(0, 16);
     const bundleDir = path.join(CACHE_ROOT, "bundles", bundleId);
     await mkdir(bundleDir, { recursive: true });
@@ -46,7 +82,7 @@ export async function POST(req: NextRequest) {
     const waveformPath = path.join(bundleDir, "waveform.json");
     const audioPath = path.join(bundleDir, "audio.mp3");
 
-    // Skip regeneration if bundle already exists
+    // Skip regeneration if bundle already exists (cache hit)
     if (await exists(manifestPath)) {
       const manifestRaw = await readFile(manifestPath, "utf8");
       return NextResponse.json(JSON.parse(manifestRaw));
@@ -101,8 +137,17 @@ export async function POST(req: NextRequest) {
     const hasVideo = (probe.streams || []).some((s: any) => s.codec_type === "video");
     const hasAudio = (probe.streams || []).some((s: any) => s.codec_type === "audio");
 
+    // Delete the source video — we only needed it for storyboard/waveform generation.
+    // Keeping it wastes disk space (12MB+ per video). The storyboard + audio.mp3
+    // are all we need for the trim preview.
+    try {
+      await rm(sourcePath, { force: true });
+    } catch {
+      // Ignore — not critical if deletion fails
+    }
+
     // Read storyboard file list
-    const sbDir = await import("node:fs/promises").then(m => m.readdir(storyboardDir));
+    const sbDir = await readdir(storyboardDir);
     const storyboardFiles = sbDir
       .filter(f => f.startsWith("thumb_") && f.endsWith(".jpg"))
       .sort();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -20,10 +20,9 @@ const MIME: Record<string, string> = {
 /**
  * GET /api/media/file?bundleId=...&kind=storyboard|audio|waveform|download&name=...
  *
- * - kind=storyboard&name=thumb_0001.jpg -> serves thumbnail (cacheable image)
- * - kind=audio                          -> serves bundle's audio.mp3 (range support for seeking)
- * - kind=waveform                       -> serves waveform.json
- * - kind=download&name=foo.mp4          -> serves a final download file (attachment)
+ * Files are STREAMED (not buffered into memory) to keep memory usage low
+ * even for large video downloads. Supports HTTP Range requests for audio
+ * seeking and resumable downloads.
  */
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -54,12 +53,9 @@ export async function GET(req: NextRequest) {
     mimeType = "application/json";
   } else if (kind === "download") {
     if (!name) return NextResponse.json({ error: "Missing name" }, { status: 400 });
-    // Sanitize — only allow safe filenames
-    if (!/^[\w\-]+\. (mp4|mp3|m4a|webm)$/.test(name.replace(/\s/g, ""))) {
-      // Less strict fallback
-      if (name.includes("..") || name.includes("/")) {
-        return NextResponse.json({ error: "Invalid name" }, { status: 400 });
-      }
+    // Sanitize — prevent path traversal
+    if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+      return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
     filePath = path.join(DOWNLOADS_ROOT, bundleId, name);
     const ext = path.extname(name).toLowerCase();
@@ -71,7 +67,38 @@ export async function GET(req: NextRequest) {
 
   try {
     const stats = await stat(filePath);
-    const data = await readFile(filePath);
+
+    // Support HTTP Range requests (for audio seeking + resumable downloads)
+    const range = req.headers.get("range");
+    if (range) {
+      const match = /bytes=(\d*)-(\d*)/.exec(range);
+      if (match) {
+        const start = match[1] ? parseInt(match[1]) : 0;
+        const end = match[2] ? parseInt(match[2]) : stats.size - 1;
+        const chunkSize = end - start + 1;
+
+        const stream = createReadStream(filePath, { start, end });
+        const readableStream = Readable.toWeb(stream) as ReadableStream;
+
+        return new NextResponse(readableStream, {
+          status: 206,
+          headers: {
+            "Content-Type": mimeType,
+            "Content-Length": String(chunkSize),
+            "Content-Range": `bytes ${start}-${end}/${stats.size}`,
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=86400, immutable",
+            ...(asAttachment && {
+              "Content-Disposition": `attachment; filename="${path.basename(name || "download")}"`,
+            }),
+          },
+        });
+      }
+    }
+
+    // Stream the full file (no buffering into memory)
+    const stream = createReadStream(filePath);
+    const readableStream = Readable.toWeb(stream) as ReadableStream;
 
     const headers: Record<string, string> = {
       "Content-Type": mimeType,
@@ -81,12 +108,11 @@ export async function GET(req: NextRequest) {
     };
 
     if (asAttachment) {
-      // Force download dialog with the original filename
       const safeName = path.basename(name || "download");
       headers["Content-Disposition"] = `attachment; filename="${safeName}"`;
     }
 
-    return new NextResponse(data, { status: 200, headers });
+    return new NextResponse(readableStream, { status: 200, headers });
   } catch {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }

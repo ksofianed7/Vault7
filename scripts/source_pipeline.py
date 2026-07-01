@@ -388,21 +388,45 @@ def probe_meta(url: str) -> dict:
 
     formats = d.get("formats", [])
 
+    # Detect aspect ratio — for vertical videos (9:16 Shorts/Reels/TikTok),
+    # height is the LARGER dimension. Users expect "1080p" not "1920p", so
+    # we use the SMALLER dimension (width) as the quality label for vertical.
+    video_formats_with_dims = [
+        f for f in formats
+        if f.get("height") and f.get("width") and f.get("vcodec") != "none"
+    ]
+    is_vertical = False
+    if video_formats_with_dims:
+        best = max(video_formats_with_dims, key=lambda f: (f.get("height") or 0) * (f.get("width") or 0))
+        w = best.get("width") or 0
+        h = best.get("height") or 0
+        if w and h and h > w:
+            is_vertical = True
+    # Fallback: detect vertical from URL (Shorts/Reels/TikTok are always vertical)
+    if not is_vertical:
+        url_lower = url.lower()
+        if "/shorts/" in url_lower or "/reel/" in url_lower or "tiktok.com" in url_lower:
+            is_vertical = True
+
     # Build video quality options — one per resolution.
     # Prefer combined video+audio mp4, then video-only mp4, then webm.
+    # For vertical videos, key by width (smaller dimension) so labels show
+    # "1080p" instead of "1920p".
     video_by_height = {}
     for f in formats:
         h = f.get("height")
+        w = f.get("width")
         if not h or f.get("vcodec") == "none":
             continue
+        quality_key = w if (is_vertical and w) else h
         score = 0
         if f.get("ext") == "mp4":
             score += 10
         if f.get("acodec") and f.get("acodec") != "none":
             score += 5
         size = f.get("filesize") or f.get("filesize_approx") or 0
-        if h not in video_by_height or score > video_by_height[h]["score"]:
-            video_by_height[h] = {
+        if quality_key not in video_by_height or score > video_by_height[quality_key]["score"]:
+            video_by_height[quality_key] = {
                 "format_id": f.get("format_id"),
                 "ext": f.get("ext"),
                 "fps": f.get("fps"),
@@ -410,6 +434,8 @@ def probe_meta(url: str) -> dict:
                 "acodec": f.get("acodec", ""),
                 "filesize": size,
                 "score": score,
+                "width": w,
+                "height": h,
             }
 
     # Build audio quality options — one per bitrate group.
