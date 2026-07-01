@@ -287,9 +287,12 @@ def yt_dlp_args(url: str = ""):
     return args
 
 
-# YouTube player clients to try in order. The default client + PO token
-# provider usually works. We fall back to other clients only if default fails.
-YT_CLIENTS = ["default", "web_safari", "android", "tv", "ios", "mweb"]
+# YouTube player clients to try in order. The 'default' client (with PO token)
+# returns the full DASH format list (2160p down to 144p + all audio bitrates).
+# We deliberately EXCLUDE 'android' — it only returns 360p HLS with no separate
+# audio, which gives users a broken "360p only + Standard audio" experience.
+# Better to fail honestly than to offer garbage quality.
+YT_CLIENTS = ["default", "web_safari", "tv", "ios", "mweb"]
 
 
 def probe_meta(url: str) -> dict:
