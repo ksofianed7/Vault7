@@ -19,11 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Add swap space to handle memory pressure during pip builds (Render free tier = 512MB RAM)
 RUN fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile || true
 
-# Install deno — REQUIRED by yt-dlp for YouTube nsig signature decoding.
-RUN curl -fsSL https://deno.land/install.sh | DENO_DIR=/usr/local/deno sh && \
-    ln -s /usr/local/deno/bin/deno /usr/local/bin/deno
+# Install deno — REQUIRED by yt-dlp for YouTube nsig + PO Token generation.
+# Download directly instead of using the install script (more reliable in Docker).
+RUN curl -fsSL https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip -o /tmp/deno.zip && \
+    unzip /tmp/deno.zip -d /tmp && \
+    mv /tmp/deno /usr/local/bin/deno && \
+    chmod +x /usr/local/bin/deno && \
+    rm /tmp/deno.zip
 ENV DENO_DIR=/usr/local/deno
-ENV PATH="/usr/local/deno/bin:${PATH}"
+ENV PATH="/usr/local/bin:${PATH}"
 
 # Install Python packages ONE BY ONE so we can see which one fails.
 # Using stable yt-dlp (not --pre) for reliability on Render.
