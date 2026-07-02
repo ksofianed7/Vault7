@@ -31,7 +31,9 @@ ENV PATH="/usr/local/bin:${PATH}"
 
 # Install Python packages ONE BY ONE so we can see which one fails.
 # Using yt-dlp pre-release for latest YouTube PO token fixes.
-RUN pip3 install --break-system-packages --no-cache-dir --pre "yt-dlp[default]"
+# yt-dlp-ejs is REQUIRED for YouTube nsig decryption — without it, YouTube fails.
+RUN pip3 install --break-system-packages --no-cache-dir --pre yt-dlp
+RUN pip3 install --break-system-packages --no-cache-dir yt-dlp-ejs
 RUN pip3 install --break-system-packages --no-cache-dir pycryptodomex
 RUN pip3 install --break-system-packages --no-cache-dir bgutil-ytdlp-pot-provider
 # curl_cffi is the heavy one (C extensions) — install last with minimal deps
