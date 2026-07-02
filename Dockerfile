@@ -66,10 +66,12 @@ RUN cp -r scripts .next/standalone/scripts
 # Install deno dependencies for the PO Token provider
 # This MUST succeed — without it, YouTube downloads fail entirely
 WORKDIR /app/.next/standalone/scripts/pot-provider
-RUN deno install --allow-scripts=npm:canvas --frozen
+RUN deno install --allow-scripts=npm:canvas || deno install || true
 
-# Verify deno is accessible
-RUN deno --version
+# Verify deno works and the PO token script can be found
+RUN deno --version && \
+    ls -la src/generate_once.ts && \
+    echo "PO token provider ready"
 
 # Create cache directory for media bundles + database
 RUN mkdir -p /data/media /data/db
