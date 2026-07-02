@@ -30,8 +30,8 @@ ENV DENO_DIR=/usr/local/deno
 ENV PATH="/usr/local/bin:${PATH}"
 
 # Install Python packages ONE BY ONE so we can see which one fails.
-# Using stable yt-dlp (not --pre) for reliability on Render.
-RUN pip3 install --break-system-packages --no-cache-dir yt-dlp
+# Using yt-dlp pre-release for latest YouTube PO token fixes.
+RUN pip3 install --break-system-packages --no-cache-dir --pre "yt-dlp[default]"
 RUN pip3 install --break-system-packages --no-cache-dir pycryptodomex
 RUN pip3 install --break-system-packages --no-cache-dir bgutil-ytdlp-pot-provider
 # curl_cffi is the heavy one (C extensions) — install last with minimal deps
