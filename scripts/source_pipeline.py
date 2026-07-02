@@ -546,7 +546,11 @@ def download_source(url: str, out_path: Path) -> str:
     url = normalize_url(url)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Instagram — try embed fallback first (no cookies needed)
+    # For preview/trim, we don't need 4K. Cap at 720p.
+    # Use video+audio merge for YouTube DASH (video-only formats need +bestaudio).
+    format_sel = "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best"
+
+    # Instagram — try embed fallback first, then yt-dlp with cookies
     if "instagram" in url:
         embed_data = try_instagram_embed_fallback(url)
         if embed_data and embed_data.get("formats"):
@@ -555,12 +559,11 @@ def download_source(url: str, out_path: Path) -> str:
                 run(["ffmpeg", "-y", "-i", direct_url, "-c", "copy", str(out_path)])
                 return str(out_path)
             except Exception:
-                pass  # Fall through to yt-dlp
+                pass
 
-        # Embed failed — try yt-dlp with cookies (if configured)
         try:
             run(yt_dlp_args(url) + [
-                "-f", "best[ext=mp4][height<=720]/best[height<=720]/best",
+                "-f", format_sel,
                 "--merge-output-format", "mp4",
                 "-o", str(out_path),
                 url,
@@ -578,7 +581,7 @@ def download_source(url: str, out_path: Path) -> str:
                 if client != "default":
                     args += ["--extractor-args", f"youtube:player_client={client}"]
                 args += [
-                    "-f", "best[ext=mp4][height<=720]/best[height<=720]/best",
+                    "-f", format_sel,
                     "--merge-output-format", "mp4",
                     "-o", str(out_path),
                     url,
@@ -594,7 +597,7 @@ def download_source(url: str, out_path: Path) -> str:
 
     # TikTok and other platforms
     run(yt_dlp_args(url) + [
-        "-f", "best[ext=mp4][height<=720]/best[height<=720]/best",
+        "-f", format_sel,
         "--merge-output-format", "mp4",
         "-o", str(out_path),
         url,

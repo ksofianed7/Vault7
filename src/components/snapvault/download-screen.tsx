@@ -38,22 +38,33 @@ export function DownloadScreen() {
   const setBundle = useSnapVault((s) => s.setMediaBundle);
   const [preparingBundle, setPreparingBundle] = useState(false);
 
-  // Detect shared URL from Android share intent (?url=...) or focus shortcut
+  // Detect shared URL from Android share intent (?url=... or ?text=...) or focus shortcut
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const url = params.get("url");
+    const urlParam = params.get("url");
+    const textParam = params.get("text");
     const focus = params.get("focus");
-    if (url) {
-      setSharedUrl(url);
-      // Auto-fetch the shared URL
-      handleFetch(url);
-      // Clean the URL (remove ?url= so it doesn't re-trigger on refresh)
+
+    // Some apps share the URL as "url", others as "text"
+    let sharedUrlValue: string | null = null;
+    if (urlParam) {
+      sharedUrlValue = urlParam;
+    } else if (textParam) {
+      // Try to extract a URL from the text param
+      const urlMatch = textParam.match(/https?:\/\/[^\s]+/);
+      if (urlMatch) {
+        sharedUrlValue = urlMatch[0];
+      }
+    }
+
+    if (sharedUrlValue) {
+      setSharedUrl(sharedUrlValue);
+      handleFetch(sharedUrlValue);
       window.history.replaceState({}, "", "/");
     }
     if (focus === "input") {
-      // Focus the URL input after a tick
       setTimeout(() => {
         const input = document.querySelector('input[type="url"]') as HTMLInputElement;
         input?.focus();
