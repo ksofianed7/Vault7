@@ -426,27 +426,33 @@ def probe_meta(url: str) -> dict:
             is_vertical = True
 
     # Build video quality options — one per resolution.
-    # Prefer combined video+audio mp4, then video-only mp4, then webm.
+    # KEY: Prioritize HIGHEST FPS first, then mp4, then combined audio.
+    # A 60fps format should ALWAYS beat a 30fps format at the same resolution.
     # For vertical videos, key by width (smaller dimension) so labels show
     # "1080p" instead of "1920p".
-    video_by_height = {}
+    video_by_quality = {}
     for f in formats:
         h = f.get("height")
         w = f.get("width")
         if not h or f.get("vcodec") == "none":
             continue
         quality_key = w if (is_vertical and w) else h
-        score = 0
+
+        # Score: FPS is MOST important (multiplied by 1000)
+        # Then mp4 container (+10)
+        # Then combined video+audio (+5)
+        fps = f.get("fps") or 0
+        score = (fps * 1000)  # 60fps = 60000, 30fps = 30000
         if f.get("ext") == "mp4":
             score += 10
         if f.get("acodec") and f.get("acodec") != "none":
             score += 5
         size = f.get("filesize") or f.get("filesize_approx") or 0
-        if quality_key not in video_by_height or score > video_by_height[quality_key]["score"]:
-            video_by_height[quality_key] = {
+        if quality_key not in video_by_quality or score > video_by_quality[quality_key]["score"]:
+            video_by_quality[quality_key] = {
                 "format_id": f.get("format_id"),
                 "ext": f.get("ext"),
-                "fps": f.get("fps"),
+                "fps": fps,
                 "vcodec": f.get("vcodec", ""),
                 "acodec": f.get("acodec", ""),
                 "filesize": size,
@@ -478,14 +484,17 @@ def probe_meta(url: str) -> dict:
             }
 
     video_qualities = []
-    for h in sorted(video_by_height.keys(), reverse=True):
-        v = video_by_height[h]
+    for h in sorted(video_by_quality.keys(), reverse=True):
+        v = video_by_quality[h]
+        # Include FPS in the label if it's > 30 (shows "1080p60" for 60fps)
+        fps = v.get("fps") or 0
+        label = f"{h}p{fps}" if fps and fps > 30 else f"{h}p"
         video_qualities.append({
             "id": v["format_id"],
-            "label": f"{h}p",
+            "label": label,
             "type": "video",
             "ext": "mp4",
-            "fps": v.get("fps"),
+            "fps": fps,
             "size": fmt_size(v.get("filesize")),
         })
 
@@ -510,7 +519,7 @@ def probe_meta(url: str) -> dict:
     # offer audio extraction from the best video format.
     if not audio_qualities and video_qualities:
         # Pick the best video format and use its format_id for audio extraction
-        best_video = video_by_height[max(video_by_height.keys())]
+        best_video = video_by_quality[max(video_by_quality.keys())]
         audio_qualities.append({
             "id": best_video["format_id"],
             "label": "Standard",
@@ -549,8 +558,9 @@ def download_source(url: str, out_path: Path) -> str:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # For preview/trim, we don't need 4K. Cap at 720p.
+    # Prioritize HIGHEST FPS at 720p for smooth preview.
     # Use video+audio merge for YouTube DASH (video-only formats need +bestaudio).
-    format_sel = "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best"
+    format_sel = "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best"
 
     # Instagram — try embed fallback first, then yt-dlp with cookies
     if "instagram" in url:
