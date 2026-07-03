@@ -103,7 +103,7 @@ export function UrlInput({ onSubmit, loading, initialValue }: UrlInputProps) {
               className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-warm"
             >
               <CornerDownLeft className="h-2.5 w-2.5" />
-              youtube · instagram · tiktok
+              youtube · instagram · tiktok · pinterest
             </motion.span>
           )}
         </AnimatePresence>

@@ -367,6 +367,8 @@ def probe_meta(url: str) -> dict:
             platform = "instagram"
         elif "tiktok" in url:
             platform = "tiktok"
+        elif "pinterest" in url or "pin.it" in url:
+            platform = "pinterest"
         else:
             platform = "unknown"
 
@@ -394,7 +396,7 @@ def probe_meta(url: str) -> dict:
                 else:
                     return {"error": parse_yt_error("Instagram requires authentication. The operator needs to set VAULT_COOKIES_B64 env var.")}
         else:
-            # TikTok and other platforms — yt-dlp directly
+            # TikTok, Pinterest, and other platforms — yt-dlp directly
             try:
                 result = run_json(yt_dlp_args(url) + ["-J", url])
                 d = json.loads(result.stdout)
@@ -417,10 +419,10 @@ def probe_meta(url: str) -> dict:
         h = best.get("height") or 0
         if w and h and h > w:
             is_vertical = True
-    # Fallback: detect vertical from URL (Shorts/Reels/TikTok are always vertical)
+    # Fallback: detect vertical from URL (Shorts/Reels/TikTok/Pinterest are often vertical)
     if not is_vertical:
         url_lower = url.lower()
-        if "/shorts/" in url_lower or "/reel/" in url_lower or "tiktok.com" in url_lower:
+        if "/shorts/" in url_lower or "/reel/" in url_lower or "tiktok.com" in url_lower or "pinterest" in url_lower:
             is_vertical = True
 
     # Build video quality options — one per resolution.

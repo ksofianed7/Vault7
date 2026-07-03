@@ -1,6 +1,6 @@
-// Platform detection + types for SnapVault
+// Platform detection + types for Vault
 
-export type Platform = "youtube" | "instagram" | "tiktok" | "unknown";
+export type Platform = "youtube" | "instagram" | "tiktok" | "pinterest" | "unknown";
 
 export interface PlatformInfo {
   platform: Platform;
@@ -14,6 +14,7 @@ const PLATFORM_PATTERNS: Array<{ platform: Platform; pattern: RegExp }> = [
   { platform: "youtube", pattern: /(youtube\.com|youtu\.be|youtube-nocookie\.com)/i },
   { platform: "instagram", pattern: /(instagram\.com|instagr\.am)/i },
   { platform: "tiktok", pattern: /(tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com)/i },
+  { platform: "pinterest", pattern: /(pinterest\.com|pin\.it|pinimg\.com)/i },
 ];
 
 export function detectPlatform(url: string): PlatformInfo {
@@ -44,6 +45,14 @@ export function detectPlatform(url: string): PlatformInfo {
             color: "text-cyan-200",
             bg: "bg-cyan-500/15",
             gradient: "linear-gradient(135deg, #25f4ee, #000, #fe2c55)",
+          };
+        case "pinterest":
+          return {
+            platform,
+            label: "Pinterest",
+            color: "text-red-200",
+            bg: "bg-red-500/15",
+            gradient: "linear-gradient(135deg, #e60023, #bd081c)",
           };
       }
     }

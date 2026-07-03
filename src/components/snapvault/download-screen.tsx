@@ -190,7 +190,7 @@ export function DownloadScreen() {
         </h1>
 
         <p className="mt-5 max-w-[280px] text-[13px] leading-relaxed text-cream/60">
-          A considered downloader for YouTube, Instagram, and TikTok.
+          A considered downloader for YouTube, Instagram, TikTok & Pinterest.
           Pick the moment, choose the format, archive it.
         </p>
 
@@ -204,7 +204,7 @@ export function DownloadScreen() {
           Keep the frame, <span className="italic font-light text-coral">drop the noise.</span>
         </h1>
         <p className="mt-4 text-[15px] leading-relaxed text-cream/50 max-w-lg">
-          A considered downloader for YouTube, Instagram, and TikTok. Pick the moment, choose the format, archive it.
+          A considered downloader for YouTube, Instagram, TikTok & Pinterest. Pick the moment, choose the format, archive it.
         </p>
         <div className="hairline mt-8" />
       </div>
