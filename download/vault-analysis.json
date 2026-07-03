@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "1. Yes, there is a list item showing a video thumbnail. The thumbnail is a rectangular image with a brownish, textured appearance (resembling a wooden or rustic surface) and has a small circular icon (possibly a play button or lock) overlaid on it.  \n\n2. To the LEFT of the thumbnail, there is a catalog number. The exact text is \"№001\".  \n\n3. Yes, there is an amber/gold colored file size text on the right side of the row. The exact text is \"51.5 MB\", and the color is amber/gold.  \n\n4. The layout of the list row from LEFT to RIGHT is:  \n   - Catalog number: \"№001\" (white text)  \n   - Video thumbnail: Rectangular brownish image with a small circular icon  \n   - \"YOUTUBE\" label: Red text with a red dot prefix  \n   - Video title: \"Sunset Drive — 4K Cinematic City ...\" (white text)  \n   - Channel name: \"Nomad Tech\" (gray text)  \n   - Duration: \"5:42\" (gray text with a clock icon)  \n   - Resolution: \"2160p\" (white text)  \n   - File size: \"51.5 MB\" (amber/gold text)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1782821408,
+  "id": "20260630200955a353fe95239543c1",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260630200955a353fe95239543c1",
+  "usage": {
+    "completion_tokens": 272,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1149,
+    "prompt_tokens_details": {
+      "cached_tokens": 6
+    },
+    "total_tokens": 1421
+  }
+}

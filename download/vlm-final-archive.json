@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "NO. The archive is empty, so there are no archived items, thumbnails, or catalog numbers present. The screen displays \"The archive is empty\" with explanatory text, and no items (or associated numbering) appear in the archive list.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1782820458,
+  "id": "202606301954167b799d3e63ce48cb",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202606301954167b799d3e63ce48cb",
+  "usage": {
+    "completion_tokens": 51,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 582,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 633
+  }
+}

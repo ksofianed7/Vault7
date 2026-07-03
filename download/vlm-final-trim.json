@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "(1) NO. There are no visible CORAL - colored draggable handles on the left and right edges of the selected/trimmed region. The timeline shows an orange - colored waveform, but there are no distinct handles with grip texture (vertical lines/dashes) at the edges of the trimmed region.  \n(2) NO. There is no vertical AMBER/orange playhead line crossing the timeline. The timeline displays an orange waveform with time markers (0:00, 0:30, 1:00, 1:30, 2:00) and a total duration of 2:27, but no playhead line is visible.  \n\nThe trim tool’s visual elements: The timeline has a dark background with an orange - colored audio waveform. Time markers are displayed at intervals (0:00, 0:30, 1:00, 1:30, 2:00) along the top of the timeline, and the total duration (2:27 / 2:27) is shown on the right. There are no visible draggable handles or a playhead line.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1782820467,
+  "id": "20260630195419ffbb2bb1aa1645d7",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260630195419ffbb2bb1aa1645d7",
+  "usage": {
+    "completion_tokens": 228,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 979,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 1207
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES\n- 01 — Default for...\n- 02 — Behavior\n- 03 — Storage\n- 04 — Colophon",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1782820469,
+  "id": "20260630195428d40a9c3237c74f2e",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260630195428d40a9c3237c74f2e",
+  "usage": {
+    "completion_tokens": 30,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 633,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 663
+  }
+}

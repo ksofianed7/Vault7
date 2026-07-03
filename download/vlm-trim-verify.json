@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "1) Yes, there is a horizontal time ruler with tick marks (0:00, 0:30, 1:00, 1:30, 2:00) and time labels.  \n2) No, there are no visible draggable in/out trim handles (vertical bars with grip thumbs) on the timeline.  \n3) Yes, there is a waveform (audio amplitude visualization with varying heights); it has varying peaks (not flat/repeating).  \n4) No, there is no visible playhead (vertical line marker) on the timeline.  \n5) The surfaces/cards are OPAQUE (solid background).  \n6) The background is warm-tinted dark.  \n7) Yes, there are visible hairline rules (1px horizontal divider lines).  \n8) Timecodes (e.g., 2:14) are shown in a sans-serif font.  \n9) Playback controls (play/pause buttons) are custom-designed (not stock lucide-style outline icons).  \n10) Exact text labels (top to bottom):  \n- \"Vault v.01\"  \n- \"v.01 • READY\"  \n- \"01\"  \n- \"THE VAULT\"  \n- \"JUN 30\"  \n- \"Keep the frame, drop the noise.\"  \n- \"A considered downloader for YouTube, Instagram, and TikTok. Pick the moment, choose the format, archive it.\"  \n- \"FIG. 01 – INPUT\"  \n- \"SOURCE\"  \n- \"https://www.youtube.com/watch?v=dQw4w\"  \n- \"YOUTUBE DETECTED\"  \n- \"YOUTUBE\"  \n- \"2:14\"  \n- \"Lo-fi Hip Hop Radio • Beats to Relax/Study to\"  \n- \"NOMAD TECH • 638K VIEWS\"  \n- \"Video MP4\"  \n- \"Audio MP3\"  \n- \"5 OPTIONS\"  \n- \"2160p 60FPS\"  \n- \"0.30 GB\"  \n- \"1080p 60FPS\"  \n- \"57.6 MB\"  \n- \"720p 30FPS\"  \n- \"36.3 MB\"  \n- \"480p 30FPS\"  \n- \"14.2 MB\"  \n- \"360p 30FPS\"  \n- \"8.3 MB\"  \n- \"Trim\"  \n- \"COLLAPSE\"  \n- \"TIMELINE\"  \n- \"2:14 / 2:14\"  \n- \"VAULT\"  \n- \"ARCHIVE\"  \n- \"TUNE\"  \n- \"Save to vault 2160P\"",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1782819296,
+  "id": "20260630193439864cf5da6f474cb4",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260630193439864cf5da6f474cb4",
+  "usage": {
+    "completion_tokens": 545,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1143,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 1688
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "The archive is empty. There are no items in the archive to describe.  \n\nText elements:  \n- Top left: \"Vault v.01\"  \n- Top right: \"v.01 • READY\"  \n- Center: \"The archive is empty\"  \n- Below center: \"Saved videos and audio will appear here, with thumbnails and trim details intact.\"  \n- Bottom bar (left to right): \"N\", \"VAULT\", \"ARCHIVE\", \"TUNE\"  \n\nVisual elements:  \n- A trash can icon (centered above \"The archive is empty\")  \n- A dark gradient background (black to dark brown)  \n- Bottom navigation bar with icons/text for \"VAULT\", \"ARCHIVE\", and \"TUNE\" (the \"ARCHIVE\" tab is highlighted in brown)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1782820540,
+  "id": "202606301955358984e9e90bd04f9b",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202606301955358984e9e90bd04f9b",
+  "usage": {
+    "completion_tokens": 166,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 578,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 744
+  }
+}

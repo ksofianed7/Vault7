@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "1) No — there is no filmstrip graphic with sprocket holes; it is a normal video thumbnail (YouTube video preview).  \n2) No — there is no horizontal time ruler with tick marks and time labels.  \n3) No — there are no visible draggable in/out trim handles on a timeline.  \n4) No — there is no waveform (audio amplitude visualization).  \n5) OPAQUE — surfaces/cards have solid backgrounds (no translucency/blur).  \n6) Warm-tinted dark (dark brown/black background).  \n7) Yes — visible hairline rules (1px horizontal divider lines, e.g., between “Video MP4”/“Audio MP3” and resolution options).  \n8) Sans-serif (all text uses sans-serif fonts, no serifs).  \n9) No — no monospace text (fixed-width font).  \n10) Exact text labels (top to bottom):  \n- “Source acquired”  \n- “Lo-fi Hip Hop Radio · Beats to Relax/Study to”  \n- “01”  \n- “THE VAULT”  \n- “JUN 30”  \n- “Keep the frame, drop the noise.”  \n- “A considered downloader for YouTube, Instagram, and TikTok. Pick the moment, choose the format, archive it.”  \n- “FIG. 01 – INPUT”  \n- “SOURCE”  \n- “/ https://www.youtube.com/watch?v=dQw4w9”  \n- “YOUTUBE DETECTED”  \n- “YOUTUBE”  \n- “2:14”  \n- “Lo-fi Hip Hop Radio · Beats to Relax/Study to”  \n- “NOMAD TECH · 638K VIEWS”  \n- “VAULT”  \n- “ARCHIVE”  \n- “TUNE”  \n- “Video MP4”  \n- “Audio MP3”  \n- “5 OPTIONS”  \n- “2160p 60FPS”  \n- “0.30 GB”  \n- “1080p 60FPS”  \n- “57.6 MB”  \n- “720p 30FPS”  \n- “36.3 MB”  \n- “480p 30FPS”  \n- “14.2 MB”  \n- “360p 30FPS”  \n- “8.3 MB”  \n- “Trim”  \n- “EXPAND”  \n- “Save to vault 2160P”",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1782819278,
+  "id": "202606301934313b6989d35a1b4f8d",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202606301934313b6989d35a1b4f8d",
+  "usage": {
+    "completion_tokens": 505,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1032,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 1537
+  }
+}
