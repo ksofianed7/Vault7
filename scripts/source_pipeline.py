@@ -486,9 +486,9 @@ def probe_meta(url: str) -> dict:
     video_qualities = []
     for h in sorted(video_by_quality.keys(), reverse=True):
         v = video_by_quality[h]
-        # Include FPS in the label if it's > 30 (shows "1080p60" for 60fps)
         fps = v.get("fps") or 0
-        label = f"{h}p{fps}" if fps and fps > 30 else f"{h}p"
+        # Always show FPS in label when available (even 30fps)
+        label = f"{h}p{fps}" if fps else f"{h}p"
         video_qualities.append({
             "id": v["format_id"],
             "label": label,
@@ -528,6 +528,51 @@ def probe_meta(url: str) -> dict:
             "bitrate": "128k",
             "size": fmt_size(best_video.get("filesize")),
         })
+
+    # For non-YouTube platforms, probe FPS from the best format URL if missing.
+    # YouTube always includes FPS in metadata, but TikTok/Instagram/Pinterest
+    # often don't. We use ffprobe on the actual video URL to get the real FPS.
+    if platform != "youtube" and video_qualities:
+        # Find the best video format URL to probe
+        best_vq = video_qualities[0]  # Already sorted highest first
+        best_fmt = video_by_quality.get(int(best_vq["label"].split("p")[0]))
+
+        if best_fmt and not best_fmt.get("fps"):
+            # Find the format URL from the original formats list
+            fmt_url = None
+            for f in formats:
+                if f.get("format_id") == best_fmt["format_id"] and f.get("url"):
+                    fmt_url = f["url"]
+                    break
+
+            if fmt_url:
+                try:
+                    probe_result = run_json([
+                        "ffprobe", "-v", "error",
+                        "-select_streams", "v:0",
+                        "-show_entries", "stream=r_frame_rate",
+                        "-of", "json",
+                        fmt_url
+                    ], timeout=10)
+                    probe_data = json.loads(probe_result.stdout)
+                    streams = probe_data.get("streams", [])
+                    if streams:
+                        fps_str = streams[0].get("r_frame_rate", "30/1")
+                        # Parse "60000/1001" → 60, "30/1" → 30
+                        parts = fps_str.split("/")
+                        if len(parts) == 2 and int(parts[1]) > 0:
+                            probed_fps = round(int(parts[0]) / int(parts[1]))
+                        else:
+                            probed_fps = int(float(fps_str))
+
+                        if probed_fps > 0:
+                            # Update ALL video qualities with the probed FPS
+                            for vq in video_qualities:
+                                res = vq["label"].split("p")[0]
+                                vq["fps"] = probed_fps
+                                vq["label"] = f"{res}p{probed_fps}"
+                except Exception:
+                    pass  # Can't probe — leave FPS as 0
 
     return {
         "url": url,
