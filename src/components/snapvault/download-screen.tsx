@@ -40,6 +40,7 @@ export function DownloadScreen() {
 
   // Detect shared URL from Android share intent (?url=... or ?text=...) or focus shortcut
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -61,8 +62,12 @@ export function DownloadScreen() {
 
     if (sharedUrlValue) {
       setSharedUrl(sharedUrlValue);
-      handleFetch(sharedUrlValue);
+      // Clean the URL first, then fetch after a short delay to ensure component is ready
       window.history.replaceState({}, "", "/");
+      // Use a timeout to ensure the component is fully mounted before fetching
+      setTimeout(() => {
+        handleFetch(sharedUrlValue!);
+      }, 300);
     }
     if (focus === "input") {
       setTimeout(() => {
@@ -120,8 +125,7 @@ export function DownloadScreen() {
         setTrimEnd(data.duration);
       }
     } catch (e) {
-      // Don't toast error — just silently fall back to no bundle (trim tool
-      // will show empty state). The download flow still works.
+      // Log the error so it's visible in console — helps debug trim issues
       console.warn("Media bundle prepare failed:", (e as Error).message);
       setBundle(null);
     } finally {

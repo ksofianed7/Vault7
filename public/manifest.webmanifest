@@ -29,12 +29,12 @@
     }
   ],
   "share_target": {
-    "action": "/",
+    "action": "/share",
     "method": "GET",
     "params": {
-      "title": "title",
+      "url": "url",
       "text": "text",
-      "url": "url"
+      "title": "title"
     }
   },
   "shortcuts": [

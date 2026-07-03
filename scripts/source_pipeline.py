@@ -597,9 +597,12 @@ def download_source(url: str, out_path: Path) -> str:
                 continue
         raise RuntimeError(parse_yt_error(last_err or "yt-dlp download failed"))
 
-    # TikTok and other platforms
+    # TikTok, Pinterest, and other platforms — use simpler format selector
+    # These platforms usually have combined video+audio, so we don't need
+    # the video+audio merge format. Just grab the best mp4 under 720p.
+    simple_sel = "best[height<=720][ext=mp4]/best[height<=720]/best"
     run(yt_dlp_args(url) + [
-        "-f", format_sel,
+        "-f", simple_sel,
         "--merge-output-format", "mp4",
         "-o", str(out_path),
         url,
