@@ -96,16 +96,16 @@ export function FormatPicker({
                   >
                     {opt.label}
                   </span>
-                  {opt.fps && (
+                  {opt.fps ? (
                     <span className="font-mono text-[9px] uppercase tracking-wider text-warm">
                       {opt.fps}fps
                     </span>
-                  )}
-                  {opt.bitrate && (
+                  ) : null}
+                  {opt.bitrate ? (
                     <span className="font-mono text-[9px] uppercase tracking-wider text-warm">
                       {opt.bitrate}
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
