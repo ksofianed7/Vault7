@@ -110,11 +110,11 @@ export function FormatPicker({
               </div>
 
               {/* Size */}
-              {opt.size && (
+              {opt.size ? (
                 <div className="font-mono text-[11px] tabular-nums text-warm">
                   {opt.size}
                 </div>
-              )}
+              ) : null}
             </button>
           );
         })}
